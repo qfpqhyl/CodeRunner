@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Typography, Row, Col, Space, Statistic, Alert } from 'antd';
 import { PlayCircleOutlined, CodeOutlined, ThunderboltOutlined, SafetyOutlined,
-         GlobalOutlined, ClockCircleOutlined, StarOutlined, RocketOutlined, BookOutlined, DownOutlined } from '@ant-design/icons';
+         GlobalOutlined, ClockCircleOutlined, StarOutlined, RocketOutlined, BookOutlined } from '@ant-design/icons';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph, Text } = Typography;
