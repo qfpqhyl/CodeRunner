@@ -46,3 +46,34 @@ class CodeExecutionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class CodeLibraryCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    code: str
+    language: Optional[str] = "python"
+    is_public: Optional[bool] = False
+    tags: Optional[str] = None
+
+class CodeLibraryUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    code: Optional[str] = None
+    language: Optional[str] = None
+    is_public: Optional[bool] = None
+    tags: Optional[str] = None
+
+class CodeLibraryResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    description: Optional[str] = None
+    code: str
+    language: str
+    is_public: bool
+    tags: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

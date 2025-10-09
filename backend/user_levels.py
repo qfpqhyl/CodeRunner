@@ -6,6 +6,7 @@ USER_LEVELS = {
         "max_execution_time": 30,  # seconds
         "max_memory": 128,  # MB
         "daily_executions": 10,
+        "max_saved_codes": 5,  # codes in library
         "color": "#ff7875"
     },
     2: {
@@ -14,6 +15,7 @@ USER_LEVELS = {
         "max_execution_time": 60,  # seconds
         "max_memory": 256,  # MB
         "daily_executions": 50,
+        "max_saved_codes": 20,  # codes in library
         "color": "#ffa940"
     },
     3: {
@@ -22,6 +24,7 @@ USER_LEVELS = {
         "max_execution_time": 120,  # seconds
         "max_memory": 512,  # MB
         "daily_executions": 200,
+        "max_saved_codes": 100,  # codes in library
         "color": "#52c41a"
     },
     4: {
@@ -30,6 +33,7 @@ USER_LEVELS = {
         "max_execution_time": 300,  # seconds
         "max_memory": 1024,  # MB
         "daily_executions": -1,  # unlimited
+        "max_saved_codes": -1,  # unlimited codes in library
         "color": "#1890ff"
     }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout as AntLayout, Menu, Button, Typography, Space } from 'antd';
-import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
+import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
@@ -26,6 +26,11 @@ const Layout = ({ children }) => {
       key: '/',
       icon: <HomeOutlined />,
       label: 'Home',
+    },
+    {
+      key: '/code-library',
+      icon: <BookOutlined />,
+      label: '代码库',
     },
   ];
 

@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import ProductHomePage from './pages/ProductHomePage';
 import LoginPage from './pages/LoginPage';
 import UserManagement from './pages/UserManagement';
+import CodeLibraryPage from './pages/CodeLibraryPage';
 import 'antd/dist/reset.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -57,6 +58,16 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <UserManagement />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/code-library"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CodeLibraryPage />
               </Layout>
             </ProtectedRoute>
           }

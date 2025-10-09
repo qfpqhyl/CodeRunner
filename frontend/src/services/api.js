@@ -35,4 +35,11 @@ export const getUserStats = () => api.get('/user-stats');
 export const executeCode = (codeData) => api.post('/execute', codeData);
 export const getExecutions = () => api.get('/executions');
 
+// Code library endpoints
+export const saveCodeToLibrary = (codeData) => api.post('/code-library', codeData);
+export const getCodeLibrary = (params = {}) => api.get('/code-library', { params });
+export const getCodeFromLibrary = (codeId) => api.get(`/code-library/${codeId}`);
+export const updateCodeInLibrary = (codeId, codeData) => api.put(`/code-library/${codeId}`, codeData);
+export const deleteCodeFromLibrary = (codeId) => api.delete(`/code-library/${codeId}`);
+
 export default api;

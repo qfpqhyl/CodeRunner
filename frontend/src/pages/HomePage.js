@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic } from 'antd';
-import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined } from '@ant-design/icons';
-import { executeCode, getExecutions, getUserStats } from '../services/api';
+import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic, Modal, Form, message } from 'antd';
+import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined } from '@ant-design/icons';
+import { executeCode, getExecutions, getUserStats, saveCodeToLibrary } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph } = Typography;
@@ -27,6 +27,8 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [userStats, setUserStats] = useState(null);
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [saveForm] = Form.useForm();
 
   const handleExecute = async () => {
     setLoading(true);
@@ -48,6 +50,28 @@ const HomePage = () => {
       setError(err.response?.data?.detail || 'Execution failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveCode = () => {
+    setSaveModalVisible(true);
+  };
+
+  const handleSaveCodeSubmit = async (values) => {
+    try {
+      await saveCodeToLibrary({
+        title: values.title,
+        description: values.description,
+        code: code,
+        language: 'python',
+        tags: values.tags
+      });
+
+      message.success('代码已保存到代码库！');
+      setSaveModalVisible(false);
+      saveForm.resetFields();
+    } catch (err) {
+      message.error(err.response?.data?.detail || '保存失败');
     }
   };
 
@@ -133,17 +157,25 @@ const HomePage = () => {
               className="code-editor"
               style={{ fontSize: '14px' }}
             />
-            <Button
-              type="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={handleExecute}
-              loading={loading}
-              disabled={userStats?.remaining_executions === 0}
-              style={{ marginTop: 16 }}
-              size="large"
-            >
-              Execute Code
-            </Button>
+            <Space style={{ marginTop: 16 }}>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={handleExecute}
+                loading={loading}
+                disabled={userStats?.remaining_executions === 0}
+                size="large"
+              >
+                Execute Code
+              </Button>
+              <Button
+                icon={<SaveOutlined />}
+                onClick={handleSaveCode}
+                size="large"
+              >
+                保存代码
+              </Button>
+            </Space>
           </Card>
         </Col>
 
@@ -256,6 +288,57 @@ const HomePage = () => {
           </Col>
         )}
       </Row>
+
+      {/* Save Code Modal */}
+      <Modal
+        title="保存代码到代码库"
+        open={saveModalVisible}
+        onCancel={() => setSaveModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={saveForm}
+          layout="vertical"
+          onFinish={handleSaveCodeSubmit}
+        >
+          <Form.Item
+            name="title"
+            label="代码标题"
+            rules={[{ required: true, message: '请输入代码标题' }]}
+          >
+            <Input placeholder="给你的代码起个名字..." />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="代码描述"
+          >
+            <TextArea
+              placeholder="简单描述这段代码的功能..."
+              rows={3}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="tags"
+            label="标签"
+          >
+            <Input placeholder="用逗号分隔多个标签，如：算法,排序,Python" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setSaveModalVisible(false)}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit">
+                保存
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

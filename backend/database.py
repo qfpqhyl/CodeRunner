@@ -35,6 +35,20 @@ class CodeExecution(Base):
     execution_time = Column(Integer)  # in milliseconds
     memory_usage = Column(Integer)  # in MB
 
+class CodeLibrary(Base):
+    __tablename__ = "code_library"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    title = Column(String, index=True)
+    description = Column(Text)
+    code = Column(Text)
+    language = Column(String, default="python")
+    is_public = Column(Boolean, default=False)
+    tags = Column(String)  # Comma-separated tags
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 def get_db():
     db = SessionLocal()
     try:

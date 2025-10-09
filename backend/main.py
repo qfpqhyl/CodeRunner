@@ -2,13 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 import subprocess
 import tempfile
 import os
 import time
-from database import get_db, init_db, User, CodeExecution
-from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse
+from database import get_db, init_db, User, CodeExecution, CodeLibrary
+from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse
 from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, USER_LEVELS
 
@@ -294,6 +294,116 @@ def get_user_stats(current_user: User = Depends(get_current_user), db: Session =
         "remaining_executions": remaining_executions,
         "is_unlimited": level_config["daily_executions"] == -1
     }
+
+# Code Library endpoints
+@app.post("/code-library", response_model=CodeLibraryResponse)
+def save_code_to_library(
+    code_data: CodeLibraryCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save code to user's code library"""
+    # Check if user has reached their code library limit (based on user level)
+    level_config = get_user_level_config(current_user.user_level)
+    max_codes = level_config.get("max_saved_codes", 20)  # Default limit if not specified
+
+    current_count = db.query(CodeLibrary).filter(CodeLibrary.user_id == current_user.id).count()
+    if max_codes > 0 and current_count >= max_codes:  # Only check limit if max_codes > 0 (not unlimited)
+        raise HTTPException(
+            status_code=429,
+            detail=f"代码库已满 ({max_codes} 个代码片段限制)"
+        )
+
+    # Create new code library entry
+    library_entry = CodeLibrary(
+        user_id=current_user.id,
+        title=code_data.title,
+        description=code_data.description,
+        code=code_data.code,
+        language=code_data.language,
+        is_public=code_data.is_public,
+        tags=code_data.tags
+    )
+
+    db.add(library_entry)
+    db.commit()
+    db.refresh(library_entry)
+
+    return library_entry
+
+@app.get("/code-library", response_model=list[CodeLibraryResponse])
+def get_user_code_library(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get user's code library"""
+    return db.query(CodeLibrary).filter(CodeLibrary.user_id == current_user.id).order_by(CodeLibrary.updated_at.desc()).offset(offset).limit(limit).all()
+
+@app.get("/code-library/{code_id}", response_model=CodeLibraryResponse)
+def get_code_from_library(
+    code_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get specific code from library"""
+    code_entry = db.query(CodeLibrary).filter(
+        CodeLibrary.id == code_id,
+        CodeLibrary.user_id == current_user.id
+    ).first()
+
+    if not code_entry:
+        raise HTTPException(status_code=404, detail="代码片段未找到")
+
+    return code_entry
+
+@app.put("/code-library/{code_id}", response_model=CodeLibraryResponse)
+def update_code_in_library(
+    code_id: int,
+    code_update: CodeLibraryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update code in library"""
+    code_entry = db.query(CodeLibrary).filter(
+        CodeLibrary.id == code_id,
+        CodeLibrary.user_id == current_user.id
+    ).first()
+
+    if not code_entry:
+        raise HTTPException(status_code=404, detail="代码片段未找到")
+
+    # Update fields
+    update_data = code_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(code_entry, field, value)
+
+    code_entry.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(code_entry)
+
+    return code_entry
+
+@app.delete("/code-library/{code_id}")
+def delete_code_from_library(
+    code_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete code from library"""
+    code_entry = db.query(CodeLibrary).filter(
+        CodeLibrary.id == code_id,
+        CodeLibrary.user_id == current_user.id
+    ).first()
+
+    if not code_entry:
+        raise HTTPException(status_code=404, detail="代码片段未找到")
+
+    db.delete(code_entry)
+    db.commit()
+
+    return {"message": "代码片段已删除"}
 
 @app.get("/")
 def read_root():
