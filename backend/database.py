@@ -34,6 +34,8 @@ class CodeExecution(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     execution_time = Column(Integer)  # in milliseconds
     memory_usage = Column(Integer)  # in MB
+    is_api_call = Column(Boolean, default=False)  # Track if this was an API call
+    code_library_id = Column(Integer, nullable=True)  # Reference to code library if applicable
 
 class CodeLibrary(Base):
     __tablename__ = "code_library"

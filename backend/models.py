@@ -113,3 +113,19 @@ class APIKeyInfo(BaseModel):
 
     class Config:
         from_attributes = True
+
+class CodeExecuteByAPIRequest(BaseModel):
+    code_id: int
+    parameters: Optional[dict] = None  # Optional parameters to pass to the code
+
+class CodeExecuteByAPIResponse(BaseModel):
+    id: int
+    result: str
+    status: str
+    execution_time: int
+    memory_usage: Optional[int] = None
+    created_at: datetime
+    code_title: str
+
+    class Config:
+        from_attributes = True

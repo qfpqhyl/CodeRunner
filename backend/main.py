@@ -10,9 +10,9 @@ import time
 import secrets
 import string
 from database import get_db, init_db, User, CodeExecution, CodeLibrary, APIKey
-from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin, APIKeyCreate, APIKeyResponse, APIKeyInfo
-from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, USER_LEVELS
+from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin, APIKeyCreate, APIKeyResponse, APIKeyInfo, CodeExecuteByAPIRequest, CodeExecuteByAPIResponse
+from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, get_api_key_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, can_user_make_api_call, get_daily_api_call_count, USER_LEVELS
 
 app = FastAPI(title="CodeRunner API", version="1.0.0")
 
@@ -331,17 +331,25 @@ def get_user_stats(current_user: User = Depends(get_current_user), db: Session =
     """Get current user's statistics and limits"""
     level_config = get_user_level_config(current_user.user_level)
     today_count = get_daily_execution_count(current_user.id, db)
+    today_api_calls = get_daily_api_call_count(current_user.id, db)
 
     remaining_executions = None
     if level_config["daily_executions"] > 0:
         remaining_executions = max(0, level_config["daily_executions"] - today_count)
+
+    remaining_api_calls = None
+    if level_config["daily_api_calls"] > 0:
+        remaining_api_calls = max(0, level_config["daily_api_calls"] - today_api_calls)
 
     return {
         "user_level": current_user.user_level,
         "level_config": level_config,
         "today_executions": today_count,
         "remaining_executions": remaining_executions,
-        "is_unlimited": level_config["daily_executions"] == -1
+        "today_api_calls": today_api_calls,
+        "remaining_api_calls": remaining_api_calls,
+        "is_unlimited_executions": level_config["daily_executions"] == -1,
+        "is_unlimited_api_calls": level_config["daily_api_calls"] == -1
     }
 
 # Code Library endpoints
@@ -549,6 +557,208 @@ def delete_api_key(
     db.commit()
 
     return {"message": "API密钥已删除"}
+
+# External API endpoints for code execution
+@app.post("/api/v1/execute", response_model=CodeExecuteByAPIResponse)
+def execute_code_by_api(
+    request: CodeExecuteByAPIRequest,
+    api_key: str = None,
+    db: Session = Depends(get_db)
+):
+    """Execute code from library using API key"""
+
+    # Validate API key and get user
+    try:
+        user, api_key_obj = get_api_key_user(api_key, db)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    # Check if user can make API calls
+    can_call, message = can_user_make_api_call(user, db)
+    if not can_call:
+        raise HTTPException(status_code=429, detail=message)
+
+    # Get the code from library
+    code_entry = db.query(CodeLibrary).filter(
+        CodeLibrary.id == request.code_id,
+        CodeLibrary.user_id == user.id
+    ).first()
+
+    if not code_entry:
+        raise HTTPException(status_code=404, detail="代码片段未找到或无权访问")
+
+    # Get user level configuration
+    level_config = get_user_level_config(user.user_level)
+
+    # Create a temporary file for the Python code
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        # If parameters are provided, we could modify the code here
+        # For now, just use the code as-is
+        f.write(code_entry.code)
+        temp_file = f.name
+
+    try:
+        start_time = time.time()
+
+        # Execute the Python code with user level limits
+        result = subprocess.run(
+            ['python', temp_file],
+            capture_output=True,
+            text=True,
+            timeout=level_config["max_execution_time"]
+        )
+
+        execution_time = int((time.time() - start_time) * 1000)  # in milliseconds
+
+        if result.returncode == 0:
+            output = result.stdout
+            status = "success"
+        else:
+            output = result.stderr
+            status = "error"
+
+        # Save execution record with API call tracking
+        execution = CodeExecution(
+            user_id=user.id,
+            code=code_entry.code,
+            result=output,
+            status=status,
+            execution_time=execution_time,
+            memory_usage=None,  # Could be implemented with psutil in the future
+            is_api_call=True,
+            code_library_id=code_entry.id
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+
+        # Create response with code title
+        response = CodeExecuteByAPIResponse(
+            id=execution.id,
+            result=execution.result,
+            status=execution.status,
+            execution_time=execution.execution_time,
+            memory_usage=execution.memory_usage,
+            created_at=execution.created_at,
+            code_title=code_entry.title
+        )
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        output = f"执行超时 ({level_config['max_execution_time']} 秒限制)"
+        status = "timeout"
+        execution = CodeExecution(
+            user_id=user.id,
+            code=code_entry.code,
+            result=output,
+            status=status,
+            execution_time=level_config["max_execution_time"] * 1000,
+            is_api_call=True,
+            code_library_id=code_entry.id
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+
+        response = CodeExecuteByAPIResponse(
+            id=execution.id,
+            result=execution.result,
+            status=execution.status,
+            execution_time=execution.execution_time,
+            memory_usage=execution.memory_usage,
+            created_at=execution.created_at,
+            code_title=code_entry.title
+        )
+
+        return response
+
+    except Exception as e:
+        output = f"执行错误: {str(e)}"
+        status = "error"
+        execution = CodeExecution(
+            user_id=user.id,
+            code=code_entry.code,
+            result=output,
+            status=status,
+            execution_time=0,
+            is_api_call=True,
+            code_library_id=code_entry.id
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+
+        response = CodeExecuteByAPIResponse(
+            id=execution.id,
+            result=execution.result,
+            status=execution.status,
+            execution_time=execution.execution_time,
+            memory_usage=execution.memory_usage,
+            created_at=execution.created_at,
+            code_title=code_entry.title
+        )
+
+        return response
+
+    finally:
+        # Clean up the temporary file
+        os.unlink(temp_file)
+
+@app.get("/api/v1/codes", response_model=list[CodeLibraryResponse])
+def get_user_codes_by_api(
+    api_key: str = None,
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get user's code library via API"""
+
+    # Validate API key and get user
+    try:
+        user, api_key_obj = get_api_key_user(api_key, db)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    # Check if user can make API calls
+    can_call, message = can_user_make_api_call(user, db)
+    if not can_call:
+        raise HTTPException(status_code=429, detail=message)
+
+    # Get user's code library
+    return db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == user.id
+    ).order_by(CodeLibrary.updated_at.desc()).offset(offset).limit(limit).all()
+
+@app.get("/api/v1/codes/{code_id}", response_model=CodeLibraryResponse)
+def get_code_by_api(
+    code_id: int,
+    api_key: str = None,
+    db: Session = Depends(get_db)
+):
+    """Get specific code from library via API"""
+
+    # Validate API key and get user
+    try:
+        user, api_key_obj = get_api_key_user(api_key, db)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    # Check if user can make API calls
+    can_call, message = can_user_make_api_call(user, db)
+    if not can_call:
+        raise HTTPException(status_code=429, detail=message)
+
+    # Get specific code
+    code_entry = db.query(CodeLibrary).filter(
+        CodeLibrary.id == code_id,
+        CodeLibrary.user_id == user.id
+    ).first()
+
+    if not code_entry:
+        raise HTTPException(status_code=404, detail="代码片段未找到或无权访问")
+
+    return code_entry
 
 @app.get("/")
 def read_root():

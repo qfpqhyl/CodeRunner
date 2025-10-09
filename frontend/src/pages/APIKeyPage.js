@@ -242,7 +242,16 @@ const APIKeyPage = () => {
                     valueStyle={{ color: userStats.level_config?.color || '#666' }}
                   />
                 </Col>
-                <Col span={12}>
+                <Col span={6}>
+                  <Statistic
+                    title="今日API调用"
+                    value={userStats.today_api_calls || 0}
+                    suffix={`/ ${userStats.level_config?.daily_api_calls === -1 ? '无限制' : userStats.level_config?.daily_api_calls}`}
+                    prefix={<ReloadOutlined />}
+                    valueStyle={{ color: '#722ed1' }}
+                  />
+                </Col>
+                <Col span={6}>
                   <div style={{ textAlign: 'right' }}>
                     <Space>
                       <Button

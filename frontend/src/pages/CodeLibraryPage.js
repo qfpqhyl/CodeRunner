@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Input, Typography, Space, Table, Tag, Modal, Form, message, Popconfirm, Row, Col, Statistic } from 'antd';
+import { Card, Button, Input, Typography, Space, Table, Tag, Modal, Form, message, Popconfirm, Row, Col, Statistic, Tabs, Alert } from 'antd';
 import {
   BookOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   CopyOutlined,
-  EyeOutlined
+  EyeOutlined,
+  ApiOutlined
 } from '@ant-design/icons';
 import {
   getCodeLibrary,
@@ -33,6 +34,9 @@ const CodeLibraryPage = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [currentCode, setCurrentCode] = useState(null);
+
+  // API example state
+  const [apiKey, setApiKey] = useState('YOUR_API_KEY');
 
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
@@ -132,6 +136,28 @@ const CodeLibraryPage = () => {
   const handleCopyToClipboard = (code) => {
     navigator.clipboard.writeText(code.code);
     message.success('代码已复制到剪贴板！');
+  };
+
+  const generateCurlCommand = (codeId) => {
+    return `curl -X POST "http://localhost:8000/api/v1/execute?api_key=${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "code_id": ${codeId},
+    "parameters": {}
+  }'`;
+  };
+
+  const generateGetCodesCurl = () => {
+    return `curl "http://localhost:8000/api/v1/codes?api_key=${apiKey}&limit=10"`;
+  };
+
+  const generateGetCodeCurl = (codeId) => {
+    return `curl "http://localhost:8000/api/v1/codes/${codeId}?api_key=${apiKey}"`;
+  };
+
+  const handleCopyCurlToClipboard = (curlCommand) => {
+    navigator.clipboard.writeText(curlCommand);
+    message.success('curl命令已复制到剪贴板！');
   };
 
   const filteredCodes = codes.filter(code =>
@@ -477,55 +503,197 @@ const CodeLibraryPage = () => {
             编辑
           </Button>
         ]}
-        width={800}
+        width={900}
       >
         {currentCode && (
-          <div>
-            {currentCode.description && (
-              <div style={{ marginBottom: 16 }}>
-                <Text strong>描述：</Text>
-                <Paragraph>{currentCode.description}</Paragraph>
-              </div>
-            )}
+          <Tabs
+            defaultActiveKey="code"
+            items={[
+              {
+                key: 'code',
+                label: (
+                  <span>
+                    <BookOutlined />
+                    代码详情
+                  </span>
+                ),
+                children: (
+                  <div>
+                    {currentCode.description && (
+                      <div style={{ marginBottom: 16 }}>
+                        <Text strong>描述：</Text>
+                        <Paragraph>{currentCode.description}</Paragraph>
+                      </div>
+                    )}
 
-            {currentCode.tags && (
-              <div style={{ marginBottom: 16 }}>
-                <Text strong>标签：</Text>
-                <div style={{ marginTop: 8 }}>
-                  {currentCode.tags.split(',').map(tag => (
-                    <Tag key={tag.trim()} color="blue" style={{ marginBottom: '4px' }}>
-                      {tag.trim()}
-                    </Tag>
-                  ))}
-                </div>
-              </div>
-            )}
+                    {currentCode.tags && (
+                      <div style={{ marginBottom: 16 }}>
+                        <Text strong>标签：</Text>
+                        <div style={{ marginTop: 8 }}>
+                          {currentCode.tags.split(',').map(tag => (
+                            <Tag key={tag.trim()} color="blue" style={{ marginBottom: '4px' }}>
+                              {tag.trim()}
+                            </Tag>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-            <div style={{ marginBottom: 16 }}>
-              <Text strong>语言：</Text> <Tag color="green">{currentCode.language}</Tag>
-            </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong>语言：</Text> <Tag color="green">{currentCode.language}</Tag>
+                    </div>
 
-            <div>
-              <Text strong>代码：</Text>
-              <pre style={{
-                background: '#f5f5f5',
-                padding: '16px',
-                borderRadius: '6px',
-                overflow: 'auto',
-                maxHeight: '400px',
-                fontSize: '13px',
-                fontFamily: 'monospace',
-                marginTop: '8px'
-              }}>
-                {currentCode.code}
-              </pre>
-            </div>
+                    <div>
+                      <Text strong>代码：</Text>
+                      <pre style={{
+                        background: '#f5f5f5',
+                        padding: '16px',
+                        borderRadius: '6px',
+                        overflow: 'auto',
+                        maxHeight: '400px',
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        marginTop: '8px'
+                      }}>
+                        {currentCode.code}
+                      </pre>
+                    </div>
 
-            <div style={{ marginTop: 16, fontSize: '12px', color: '#666' }}>
-              创建时间：{new Date(currentCode.created_at).toLocaleString()} |
-              更新时间：{new Date(currentCode.updated_at).toLocaleString()}
-            </div>
-          </div>
+                    <div style={{ marginTop: 16, fontSize: '12px', color: '#666' }}>
+                      创建时间：{new Date(currentCode.created_at).toLocaleString()} |
+                      更新时间：{new Date(currentCode.updated_at).toLocaleString()}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'api',
+                label: (
+                  <span>
+                    <ApiOutlined />
+                    API调用
+                  </span>
+                ),
+                children: (
+                  <div>
+                    <Alert
+                      message="API调用说明"
+                      description="通过API接口可以程序化地调用这段代码。请先在API密钥页面创建密钥，然后在下方设置你的API密钥。"
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 24 }}
+                    />
+
+                    <div style={{ marginBottom: 24 }}>
+                      <Text strong>API密钥设置：</Text>
+                      <div style={{ marginTop: 8 }}>
+                        <Input
+                          placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          style={{ width: '100%', maxWidth: '400px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 24 }}>
+                      <Text strong>代码ID：</Text>
+                      <Text code>{currentCode.id}</Text>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong>1. 执行代码</Text>
+                      <div style={{ marginTop: 8, position: 'relative' }}>
+                        <pre style={{
+                          background: '#2f3349',
+                          color: '#f8f8f2',
+                          padding: '16px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          overflow: 'auto'
+                        }}>
+                          {generateCurlCommand(currentCode.id)}
+                        </pre>
+                        <Button
+                          size="small"
+                          icon={<CopyOutlined />}
+                          onClick={() => handleCopyCurlToClipboard(generateCurlCommand(currentCode.id))}
+                          style={{ position: 'absolute', top: '8px', right: '8px' }}
+                        >
+                          复制
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong>2. 获取代码详情</Text>
+                      <div style={{ marginTop: 8, position: 'relative' }}>
+                        <pre style={{
+                          background: '#2f3349',
+                          color: '#f8f8f2',
+                          padding: '16px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          overflow: 'auto'
+                        }}>
+                          {generateGetCodeCurl(currentCode.id)}
+                        </pre>
+                        <Button
+                          size="small"
+                          icon={<CopyOutlined />}
+                          onClick={() => handleCopyCurlToClipboard(generateGetCodeCurl(currentCode.id))}
+                          style={{ position: 'absolute', top: '8px', right: '8px' }}
+                        >
+                          复制
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong>3. 获取所有代码列表</Text>
+                      <div style={{ marginTop: 8, position: 'relative' }}>
+                        <pre style={{
+                          background: '#2f3349',
+                          color: '#f8f8f2',
+                          padding: '16px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          overflow: 'auto'
+                        }}>
+                          {generateGetCodesCurl()}
+                        </pre>
+                        <Button
+                          size="small"
+                          icon={<CopyOutlined />}
+                          onClick={() => handleCopyCurlToClipboard(generateGetCodesCurl())}
+                          style={{ position: 'absolute', top: '8px', right: '8px' }}
+                        >
+                          复制
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Alert
+                      message="注意事项"
+                      description={
+                        <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                          <li>每次API调用都会消耗你的每日调用额度</li>
+                          <li>请将API密钥替换为你自己的密钥</li>
+                          <li>curl命令中的参数可以根据需要调整</li>
+                          <li>API基础URL：http://localhost:8000/api/v1</li>
+                        </ul>
+                      }
+                      type="warning"
+                      showIcon
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
       </Modal>
     </div>

@@ -8,6 +8,7 @@ USER_LEVELS = {
         "daily_executions": 10,
         "max_saved_codes": 5,  # codes in library
         "max_api_keys": 2,  # API keys limit
+        "daily_api_calls": 20,  # API call limit per day
         "color": "#ff7875"
     },
     2: {
@@ -18,6 +19,7 @@ USER_LEVELS = {
         "daily_executions": 50,
         "max_saved_codes": 20,  # codes in library
         "max_api_keys": 5,  # API keys limit
+        "daily_api_calls": 100,  # API call limit per day
         "color": "#ffa940"
     },
     3: {
@@ -28,6 +30,7 @@ USER_LEVELS = {
         "daily_executions": 200,
         "max_saved_codes": 100,  # codes in library
         "max_api_keys": 10,  # API keys limit
+        "daily_api_calls": 500,  # API call limit per day
         "color": "#52c41a"
     },
     4: {
@@ -38,6 +41,7 @@ USER_LEVELS = {
         "daily_executions": -1,  # unlimited
         "max_saved_codes": -1,  # unlimited codes in library
         "max_api_keys": -1,  # unlimited API keys
+        "daily_api_calls": -1,  # unlimited API calls
         "color": "#1890ff"
     }
 }
@@ -58,6 +62,35 @@ def get_daily_execution_count(user_id: int, db) -> int:
     ).count()
 
     return count
+
+def get_daily_api_call_count(user_id: int, db) -> int:
+    """Get today's API call count for a user"""
+    from datetime import date
+    today = date.today()
+    from database import CodeExecution
+
+    count = db.query(CodeExecution).filter(
+        CodeExecution.user_id == user_id,
+        CodeExecution.created_at >= today,
+        CodeExecution.is_api_call == True
+    ).count()
+
+    return count
+
+def can_user_make_api_call(user, db) -> tuple[bool, str]:
+    """Check if user can make API calls based on their level limits"""
+    if not user.is_active:
+        return False, "用户账户已被禁用"
+
+    level_config = get_user_level_config(user.user_level)
+
+    # Check daily API call limit
+    if level_config["daily_api_calls"] > 0:  # -1 means unlimited
+        today_count = get_daily_api_call_count(user.id, db)
+        if today_count >= level_config["daily_api_calls"]:
+            return False, f"今日API调用次数已达上限 ({level_config['daily_api_calls']} 次)"
+
+    return True, "可以调用API"
 
 def can_user_execute(user, db) -> tuple[bool, str]:
     """Check if user can execute code based on their level limits"""
