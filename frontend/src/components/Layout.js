@@ -62,7 +62,7 @@ const Layout = ({ children }) => {
     menuItems.push({
       key: '/users',
       icon: <UserOutlined />,
-      label: '用户管理',
+      label: '系统管理',
     });
   }
 

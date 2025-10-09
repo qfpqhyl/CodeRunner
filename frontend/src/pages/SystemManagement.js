@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Typography, Space, Tag, Popconfirm, message, Modal, Form, Input, Switch, Select, Tabs, DatePicker, Row, Col, Statistic, Spin, Empty, Tooltip } from 'antd';
-import { UserOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, FileTextOutlined, BarChartOutlined, FilterOutlined, ExportOutlined } from '@ant-design/icons';
+import { UserOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, FileTextOutlined, BarChartOutlined, FilterOutlined, ExportOutlined, SettingOutlined } from '@ant-design/icons';
 import { getUsers, createUser, updateUser, deleteUser, getUserLevels, getSystemLogs, getLogStatistics, getLogActions, getLogResourceTypes } from '../services/api';
 import moment from 'moment';
 import { useAuth } from '../components/AuthContext';
@@ -8,7 +8,7 @@ import { useAuth } from '../components/AuthContext';
 const { Title } = Typography;
 const { Option } = Select;
 
-const UserManagement = () => {
+const SystemManagement = () => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [userLevels, setUserLevels] = useState({});
@@ -474,7 +474,7 @@ const UserManagement = () => {
             key: 'users',
             label: (
               <span>
-                <UserOutlined />
+                <SettingOutlined />
                 用户管理
               </span>
             ),
@@ -487,7 +487,7 @@ const UserManagement = () => {
                   marginBottom: '16px'
                 }}>
                   <Title level={2}>
-                    <UserOutlined /> 用户管理
+                    <SettingOutlined /> 用户管理
                   </Title>
                   <Space>
                     <Button
@@ -822,4 +822,4 @@ const UserManagement = () => {
   );
 };
 
-export default UserManagement;
+export default SystemManagement;

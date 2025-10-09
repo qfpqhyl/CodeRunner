@@ -64,6 +64,20 @@ class APIKey(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)  # Optional expiration date
 
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=True, index=True)  # Can be null for system events
+    action = Column(String, index=True)  # "login", "logout", "code_execute", "user_create", "user_update", "user_delete", "api_call", etc.
+    resource_type = Column(String, index=True)  # "user", "code_execution", "api_key", "code_library", etc.
+    resource_id = Column(Integer, nullable=True)  # ID of the affected resource
+    details = Column(Text)  # JSON string with additional details
+    ip_address = Column(String, index=True)
+    user_agent = Column(Text)
+    status = Column(String, index=True)  # "success", "error", "warning"
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
 def get_db():
     db = SessionLocal()
     try:

@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import timedelta, datetime
 import subprocess
 import tempfile
@@ -9,7 +10,9 @@ import os
 import time
 import secrets
 import string
-from database import get_db, init_db, User, CodeExecution, CodeLibrary, APIKey
+import json
+import uuid
+from database import get_db, init_db, User, CodeExecution, CodeLibrary, APIKey, SystemLog
 from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin, APIKeyCreate, APIKeyResponse, APIKeyInfo, CodeExecuteByAPIRequest, CodeExecuteByAPIResponse
 from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, get_api_key_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, can_user_make_api_call, get_daily_api_call_count, USER_LEVELS
@@ -28,8 +31,59 @@ app.add_middleware(
 # Initialize database
 init_db()
 
+# Utility function to log system events
+def log_system_event(
+    db: Session,
+    user_id: int = None,
+    action: str = "",
+    resource_type: str = "",
+    resource_id: int = None,
+    details: dict = None,
+    ip_address: str = None,
+    user_agent: str = None,
+    status: str = "success"
+):
+    """Log a system event"""
+    try:
+        log_entry = SystemLog(
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            details=json.dumps(details) if details else None,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            status=status
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception as e:
+        # Don't fail the main operation if logging fails
+        print(f"Failed to log system event: {e}")
+        db.rollback()
+
+# Dependency to get client information
+async def get_client_info(request: Request):
+    """Get client IP and User-Agent from request"""
+    # Get real client IP (considering reverse proxies)
+    client_ip = request.client.host
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        client_ip = real_ip.strip()
+
+    user_agent = request.headers.get("User-Agent", "")
+
+    return {
+        "ip_address": client_ip,
+        "user_agent": user_agent
+    }
+
 @app.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_user(user: UserCreate, db: Session = Depends(get_db), client_info: dict = Depends(get_client_info)):
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -49,33 +103,102 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             # There's already an admin, only admin can create new admin
             raise HTTPException(status_code=403, detail="Only admin users can create admin accounts")
 
-    hashed_password = get_password_hash(user.password)
-    db_user = User(
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        hashed_password=hashed_password,
-        is_admin=user.is_admin,
-        user_level=user.user_level
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        hashed_password = get_password_hash(user.password)
+        db_user = User(
+            username=user.username,
+            email=user.email,
+            full_name=user.full_name,
+            hashed_password=hashed_password,
+            is_admin=user.is_admin,
+            user_level=user.user_level
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+
+        # Log user registration
+        log_system_event(
+            db=db,
+            user_id=db_user.id,
+            action="user_register",
+            resource_type="user",
+            resource_id=db_user.id,
+            details={
+                "username": user.username,
+                "email": user.email,
+                "is_admin": user.is_admin,
+                "user_level": user.user_level
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return db_user
+
+    except Exception as e:
+        # Log failed registration attempt
+        log_system_event(
+            db=db,
+            action="user_register",
+            resource_type="user",
+            details={
+                "username": user.username,
+                "email": user.email,
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise
 
 @app.post("/login", response_model=Token)
-def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
+def login_user(user_credentials: UserLogin, db: Session = Depends(get_db), client_info: dict = Depends(get_client_info)):
     user = authenticate_user(db, user_credentials.username, user_credentials.password)
+
     if not user:
+        # Log failed login attempt
+        log_system_event(
+            db=db,
+            action="user_login",
+            resource_type="user",
+            details={
+                "username": user_credentials.username,
+                "reason": "invalid_credentials"
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
+
+    # Log successful login
+    log_system_event(
+        db=db,
+        user_id=user.id,
+        action="user_login",
+        resource_type="user",
+        resource_id=user.id,
+        details={
+            "username": user.username,
+            "token_expires_minutes": ACCESS_TOKEN_EXPIRE_MINUTES
+        },
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=UserResponse)
@@ -133,7 +256,8 @@ def list_users(current_user: User = Depends(get_current_admin_user), db: Session
 def execute_code(
     code_request: CodeExecutionRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
 ):
     # Check if user can execute code based on their level
     can_execute, message = can_user_execute(current_user, db)
@@ -190,6 +314,24 @@ def execute_code(
         db.add(execution)
         db.commit()
         db.refresh(execution)
+
+        # Log code execution
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="code_execute",
+            resource_type="code_execution",
+            resource_id=execution.id,
+            details={
+                "status": status,
+                "execution_time": execution_time,
+                "code_length": len(code_request.code),
+                "user_level": current_user.user_level
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success" if status == "success" else "error"
+        )
 
         return execution
 
@@ -763,6 +905,167 @@ def get_code_by_api(
 @app.get("/")
 def read_root():
     return {"message": "Welcome to CodeRunner API"}
+
+# System Logs endpoints (Admin only)
+@app.get("/admin/logs")
+def get_system_logs(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+    limit: int = 100,
+    offset: int = 0,
+    action: str = None,
+    resource_type: str = None,
+    status: str = None,
+    user_id: int = None,
+    start_date: str = None,
+    end_date: str = None
+):
+    """Get system logs with filtering options"""
+    query = db.query(SystemLog)
+
+    # Apply filters
+    if action:
+        query = query.filter(SystemLog.action == action)
+    if resource_type:
+        query = query.filter(SystemLog.resource_type == resource_type)
+    if status:
+        query = query.filter(SystemLog.status == status)
+    if user_id:
+        query = query.filter(SystemLog.user_id == user_id)
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(SystemLog.created_at >= start_dt)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(SystemLog.created_at <= end_dt)
+        except ValueError:
+            pass
+
+    # Order by creation time (newest first) and apply pagination
+    logs = query.order_by(SystemLog.created_at.desc()).offset(offset).limit(limit).all()
+
+    # Convert to dict format with user info
+    result = []
+    for log in logs:
+        log_dict = {
+            "id": log.id,
+            "user_id": log.user_id,
+            "action": log.action,
+            "resource_type": log.resource_type,
+            "resource_id": log.resource_id,
+            "details": json.loads(log.details) if log.details else None,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "status": log.status,
+            "created_at": log.created_at.isoformat(),
+            "user": None
+        }
+
+        # Add user info if available
+        if log.user_id:
+            user = db.query(User).filter(User.id == log.user_id).first()
+            if user:
+                log_dict["user"] = {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "full_name": user.full_name
+                }
+
+        result.append(log_dict)
+
+    return result
+
+@app.get("/admin/logs/stats")
+def get_log_statistics(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+    days: int = 7
+):
+    """Get log statistics for the past N days"""
+    from datetime import timedelta
+
+    start_date = datetime.utcnow() - timedelta(days=days)
+
+    # Total logs in period
+    total_logs = db.query(SystemLog).filter(SystemLog.created_at >= start_date).count()
+
+    # Logs by status
+    status_counts = {}
+    for status in ["success", "error", "warning"]:
+        count = db.query(SystemLog).filter(
+            SystemLog.created_at >= start_date,
+            SystemLog.status == status
+        ).count()
+        status_counts[status] = count
+
+    # Logs by action (top 10)
+    action_counts = db.query(
+        SystemLog.action,
+        func.count(SystemLog.id).label('count')
+    ).filter(
+        SystemLog.created_at >= start_date
+    ).group_by(SystemLog.action).order_by(
+        func.count(SystemLog.id).desc()
+    ).limit(10).all()
+
+    # Logs by resource_type
+    resource_counts = db.query(
+        SystemLog.resource_type,
+        func.count(SystemLog.id).label('count')
+    ).filter(
+        SystemLog.created_at >= start_date
+    ).group_by(SystemLog.resource_type).order_by(
+        func.count(SystemLog.id).desc()
+    ).limit(10).all()
+
+    # Recent error logs (last 10)
+    recent_errors = db.query(SystemLog).filter(
+        SystemLog.status == "error",
+        SystemLog.created_at >= start_date
+    ).order_by(SystemLog.created_at.desc()).limit(10).all()
+
+    return {
+        "period_days": days,
+        "total_logs": total_logs,
+        "status_distribution": status_counts,
+        "top_actions": [{"action": action, "count": count} for action, count in action_counts],
+        "top_resources": [{"resource_type": resource, "count": count} for resource, count in resource_counts],
+        "recent_errors": [
+            {
+                "id": log.id,
+                "action": log.action,
+                "details": json.loads(log.details) if log.details else None,
+                "created_at": log.created_at.isoformat(),
+                "user_id": log.user_id
+            }
+            for log in recent_errors
+        ]
+    }
+
+@app.get("/admin/logs/actions")
+def get_log_actions(current_user: User = Depends(get_current_admin_user)):
+    """Get all available log actions for filtering"""
+    db = next(get_db())
+    try:
+        actions = db.query(SystemLog.action).distinct().all()
+        return [action[0] for action in actions if action[0]]
+    finally:
+        db.close()
+
+@app.get("/admin/logs/resource-types")
+def get_log_resource_types(current_user: User = Depends(get_current_admin_user)):
+    """Get all available resource types for filtering"""
+    db = next(get_db())
+    try:
+        resource_types = db.query(SystemLog.resource_type).distinct().all()
+        return [rt[0] for rt in resource_types if rt[0]]
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     import uvicorn

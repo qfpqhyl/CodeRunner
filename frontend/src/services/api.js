@@ -52,4 +52,10 @@ export const getAPIKeys = () => api.get('/api-keys');
 export const toggleAPIKey = (keyId) => api.put(`/api-keys/${keyId}/toggle`);
 export const deleteAPIKey = (keyId) => api.delete(`/api-keys/${keyId}`);
 
+// System Logs endpoints (Admin only)
+export const getSystemLogs = (params = {}) => api.get('/admin/logs', { params });
+export const getLogStatistics = (params = {}) => api.get('/admin/logs/stats', { params });
+export const getLogActions = () => api.get('/admin/logs/actions');
+export const getLogResourceTypes = () => api.get('/admin/logs/resource-types');
+
 export default api;

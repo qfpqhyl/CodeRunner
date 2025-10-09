@@ -7,7 +7,7 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ProductHomePage from './pages/ProductHomePage';
 import LoginPage from './pages/LoginPage';
-import UserManagement from './pages/UserManagement';
+import SystemManagement from './pages/SystemManagement';
 import CodeLibraryPage from './pages/CodeLibraryPage';
 import APIKeyPage from './pages/APIKeyPage';
 import 'antd/dist/reset.css';
@@ -58,7 +58,7 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <Layout>
-                <UserManagement />
+                <SystemManagement />
               </Layout>
             </ProtectedRoute>
           }
