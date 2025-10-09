@@ -10,6 +10,7 @@ import time
 from database import get_db, init_db, User, CodeExecution
 from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse
 from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, USER_LEVELS
 
 app = FastAPI(title="CodeRunner API", version="1.0.0")
 
@@ -52,7 +53,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         full_name=user.full_name,
         hashed_password=hashed_password,
-        is_admin=user.is_admin
+        is_admin=user.is_admin,
+        user_level=user.user_level
     )
     db.add(db_user)
     db.commit()
@@ -88,6 +90,24 @@ def execute_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Check if user can execute code based on their level
+    can_execute, message = can_user_execute(current_user, db)
+    if not can_execute:
+        raise HTTPException(status_code=429, detail=message)
+
+    # Get user level configuration
+    level_config = get_user_level_config(current_user.user_level)
+
+    # Check daily execution count
+    if level_config["daily_executions"] > 0:
+        today_count = get_daily_execution_count(current_user.id, db)
+        remaining = level_config["daily_executions"] - today_count
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=429,
+                detail=f"今日执行次数已达上限 ({level_config['daily_executions']} 次)"
+            )
+
     # Create a temporary file for the Python code
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
         f.write(code_request.code)
@@ -96,12 +116,12 @@ def execute_code(
     try:
         start_time = time.time()
 
-        # Execute the Python code
+        # Execute the Python code with user level limits
         result = subprocess.run(
             ['python', temp_file],
             capture_output=True,
             text=True,
-            timeout=30  # 30 second timeout
+            timeout=level_config["max_execution_time"]
         )
 
         execution_time = int((time.time() - start_time) * 1000)  # in milliseconds
@@ -113,13 +133,14 @@ def execute_code(
             output = result.stderr
             status = "error"
 
-        # Save execution record
+        # Save execution record with memory usage (placeholder for now)
         execution = CodeExecution(
             user_id=current_user.id,
             code=code_request.code,
             result=output,
             status=status,
-            execution_time=execution_time
+            execution_time=execution_time,
+            memory_usage=None  # Could be implemented with psutil in the future
         )
         db.add(execution)
         db.commit()
@@ -128,14 +149,29 @@ def execute_code(
         return execution
 
     except subprocess.TimeoutExpired:
-        output = "Execution timed out (30 seconds limit)"
+        output = f"执行超时 ({level_config['max_execution_time']} 秒限制)"
+        status = "timeout"
+        execution = CodeExecution(
+            user_id=current_user.id,
+            code=code_request.code,
+            result=output,
+            status=status,
+            execution_time=level_config["max_execution_time"] * 1000
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+        return execution
+
+    except Exception as e:
+        output = f"执行错误: {str(e)}"
         status = "error"
         execution = CodeExecution(
             user_id=current_user.id,
             code=code_request.code,
             result=output,
             status=status,
-            execution_time=30000
+            execution_time=0
         )
         db.add(execution)
         db.commit()
@@ -175,7 +211,8 @@ def create_user_by_admin(
         email=user.email,
         full_name=user.full_name,
         hashed_password=hashed_password,
-        is_admin=user.is_admin
+        is_admin=user.is_admin,
+        user_level=user.user_level
     )
     db.add(db_user)
     db.commit()
@@ -234,6 +271,29 @@ def get_all_executions(
     limit: int = 100
 ):
     return db.query(CodeExecution).order_by(CodeExecution.created_at.desc()).limit(limit).all()
+
+@app.get("/user-levels", response_model=dict)
+def get_user_levels():
+    """Get all user level configurations"""
+    return USER_LEVELS
+
+@app.get("/user-stats")
+def get_user_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current user's statistics and limits"""
+    level_config = get_user_level_config(current_user.user_level)
+    today_count = get_daily_execution_count(current_user.id, db)
+
+    remaining_executions = None
+    if level_config["daily_executions"] > 0:
+        remaining_executions = max(0, level_config["daily_executions"] - today_count)
+
+    return {
+        "user_level": current_user.user_level,
+        "level_config": level_config,
+        "today_executions": today_count,
+        "remaining_executions": remaining_executions,
+        "is_unlimited": level_config["daily_executions"] == -1
+    }
 
 @app.get("/")
 def read_root():

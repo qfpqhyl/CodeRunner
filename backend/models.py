@@ -10,11 +10,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     is_admin: Optional[bool] = False
+    user_level: Optional[int] = 1
 
 class UserResponse(UserBase):
     id: int
     is_active: bool
     is_admin: bool
+    user_level: int
     created_at: datetime
 
     class Config:
@@ -39,6 +41,7 @@ class CodeExecutionResponse(BaseModel):
     result: str
     status: str
     execution_time: int
+    memory_usage: Optional[int] = None
     created_at: datetime
 
     class Config:

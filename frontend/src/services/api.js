@@ -27,6 +27,10 @@ export const updateUser = (userId, userData) => api.put(`/admin/users/${userId}`
 export const deleteUser = (userId) => api.delete(`/admin/users/${userId}`);
 export const getAllExecutions = () => api.get('/admin/executions');
 
+// User level and stats endpoints
+export const getUserLevels = () => api.get('/user-levels');
+export const getUserStats = () => api.get('/user-stats');
+
 // Code execution endpoints
 export const executeCode = (codeData) => api.post('/execute', codeData);
 export const getExecutions = () => api.get('/executions');

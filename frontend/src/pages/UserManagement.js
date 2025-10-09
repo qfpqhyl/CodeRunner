@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Typography, Space, Tag, Popconfirm, message, Modal, Form, Input, Switch } from 'antd';
+import { Card, Table, Button, Typography, Space, Tag, Popconfirm, message, Modal, Form, Input, Switch, Select } from 'antd';
 import { UserOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
-import { getUsers, createUser, updateUser, deleteUser } from '../services/api';
+import { getUsers, createUser, updateUser, deleteUser, getUserLevels } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
 const { Title } = Typography;
+const { Option } = Select;
 
 const UserManagement = () => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [userLevels, setUserLevels] = useState({});
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -16,7 +18,17 @@ const UserManagement = () => {
 
   useEffect(() => {
     loadUsers();
+    loadUserLevels();
   }, []);
+
+  const loadUserLevels = async () => {
+    try {
+      const response = await getUserLevels();
+      setUserLevels(response.data);
+    } catch (error) {
+      message.error('加载用户等级配置失败');
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -48,6 +60,7 @@ const UserManagement = () => {
       full_name: user.full_name,
       is_admin: user.is_admin,
       is_active: user.is_active,
+      user_level: user.user_level,
       password: '' // Don't populate password for security
     });
     setModalVisible(true);
@@ -130,6 +143,19 @@ const UserManagement = () => {
           {isActive ? '活跃' : '禁用'}
         </Tag>
       ),
+    },
+    {
+      title: '用户等级',
+      dataIndex: 'user_level',
+      key: 'user_level',
+      render: (level) => {
+        const levelConfig = userLevels[level] || {};
+        return (
+          <Tag color={levelConfig.color || 'default'}>
+            {levelConfig.name || `等级 ${level}`}
+          </Tag>
+        );
+      },
     },
     {
       title: '角色',
@@ -288,6 +314,22 @@ const UserManagement = () => {
             valuePropName="checked"
           >
             <Switch checkedChildren="管理员" unCheckedChildren="普通用户" />
+          </Form.Item>
+
+          <Form.Item
+            name="user_level"
+            label="用户等级"
+            rules={[{ required: true, message: '请选择用户等级' }]}
+          >
+            <Select placeholder="选择用户等级">
+              {Object.entries(userLevels).map(([level, config]) => (
+                <Option key={level} value={parseInt(level)}>
+                  <span style={{ color: config.color }}>
+                    {config.name} - {config.description}
+                  </span>
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item

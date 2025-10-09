@@ -20,6 +20,7 @@ class User(Base):
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    user_level = Column(Integer, default=1)  # 1: Free, 2: Basic, 3: Premium, 4: Enterprise
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class CodeExecution(Base):
@@ -29,9 +30,10 @@ class CodeExecution(Base):
     user_id = Column(Integer, index=True)
     code = Column(Text)
     result = Column(Text)
-    status = Column(String)  # "success", "error", "running"
+    status = Column(String)  # "success", "error", "running", "timeout", "memory_exceeded"
     created_at = Column(DateTime, default=datetime.utcnow)
     execution_time = Column(Integer)  # in milliseconds
+    memory_usage = Column(Integer)  # in MB
 
 def get_db():
     db = SessionLocal()
@@ -57,7 +59,8 @@ def init_db():
                 hashed_password=get_password_hash(admin_password),
                 full_name="System Administrator",
                 is_admin=True,
-                is_active=True
+                is_active=True,
+                user_level=4  # Enterprise level for admin
             )
             db.add(admin_user)
             db.commit()

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic } from 'antd';
 import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined } from '@ant-design/icons';
-import { executeCode, getExecutions } from '../services/api';
+import { executeCode, getExecutions, getUserStats } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph } = Typography;
@@ -10,9 +10,7 @@ const { TextArea } = Input;
 const HomePage = () => {
   const { user } = useAuth();
 
-  // Check if user has admin permissions
-  const isAdmin = user?.is_admin || false;
-  const [code, setCode] = useState(`# Welcome to CodeRunner\n# Write your Python code here and execute it remotely\n\nprint("Hello, World!")\nprint("Current user:", "${user?.username || 'Anonymous'}")\n\n# Try some calculations\nx = 10\ny = 20\nresult = x + y\nprint(f"{x} + {y} = {result}")`);
+    const [code, setCode] = useState(`# Welcome to CodeRunner\n# Write your Python code here and execute it remotely\n# User Level: ${user?.username || 'Guest'} (Level ${user?.user_level || 1})\n\nprint("Hello, World!")\nprint("Current user:", "${user?.username || 'Anonymous'}")\nprint("User level:", ${user?.user_level || 1})\n\n# Try some calculations\nx = 10\ny = 20\nresult = x + y\nprint(f"{x} + {y} = {result}")`);
 
   // Load example code from URL parameter if present
   React.useEffect(() => {
@@ -28,6 +26,7 @@ const HomePage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [executions, setExecutions] = useState([]);
+  const [userStats, setUserStats] = useState(null);
 
   const handleExecute = async () => {
     setLoading(true);
@@ -41,6 +40,10 @@ const HomePage = () => {
       // Refresh executions list
       const execResponse = await getExecutions();
       setExecutions(execResponse.data.slice(0, 5)); // Show last 5 executions
+
+      // Refresh user stats to update execution count
+      const statsResponse = await getUserStats();
+      setUserStats(statsResponse.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Execution failed');
     } finally {
@@ -49,7 +52,11 @@ const HomePage = () => {
   };
 
   React.useEffect(() => {
-    // Load recent executions
+    // Load user stats and recent executions
+    getUserStats().then(response => {
+      setUserStats(response.data);
+    }).catch(() => {});
+
     getExecutions().then(response => {
       setExecutions(response.data.slice(0, 5));
     }).catch(() => {});
@@ -73,14 +80,25 @@ const HomePage = () => {
                 prefix={<CheckCircleOutlined />}
               />
               <Statistic
-                title="用户角色"
-                value={isAdmin ? '管理员' : '普通用户'}
+                title="用户等级"
+                value={userStats?.level_config?.name || `等级 ${user?.user_level || 1}`}
                 prefix={<UserOutlined />}
+                valueStyle={{ color: userStats?.level_config?.color || '#666' }}
               />
+              {userStats?.remaining_executions !== null && userStats?.remaining_executions !== undefined && (
+                <Statistic
+                  title="今日剩余次数"
+                  value={userStats.remaining_executions}
+                  suffix={`/ ${userStats.level_config?.daily_executions === -1 ? '无限制' : userStats.level_config?.daily_executions}`}
+                  prefix={<ClockCircleOutlined />}
+                  valueStyle={{ color: userStats.remaining_executions > 0 ? '#52c41a' : '#ff4d4f' }}
+                />
+              )}
               <Statistic
-                title="最近执行"
-                value={executions.length}
-                prefix={<ClockCircleOutlined />}
+                title="执行时长限制"
+                value={userStats?.level_config?.max_execution_time || 30}
+                suffix="秒"
+                prefix={<CodeOutlined />}
               />
             </Space>
           </Card>
@@ -88,6 +106,25 @@ const HomePage = () => {
 
         <Col xs={24} lg={12}>
           <Card title="Python Code Editor" size="small">
+            {userStats && userStats.level_config && (
+              <div style={{ marginBottom: 12, padding: 8, background: '#f0f9ff', borderRadius: 4, fontSize: '12px' }}>
+                <Space split={<span>•</span>}>
+                  <span style={{ color: userStats.level_config.color }}>
+                    {userStats.level_config.name}
+                  </span>
+                  <span>时长限制: {userStats.level_config.max_execution_time}秒</span>
+                  <span>内存限制: {userStats.level_config.max_memory}MB</span>
+                  {userStats.level_config.daily_executions > 0 && (
+                    <span style={{ color: userStats.remaining_executions > 0 ? '#52c41a' : '#ff4d4f' }}>
+                      今日剩余: {userStats.remaining_executions}/{userStats.level_config.daily_executions}
+                    </span>
+                  )}
+                  {userStats.level_config.daily_executions === -1 && (
+                    <span style={{ color: '#52c41a' }}>无执行次数限制</span>
+                  )}
+                </Space>
+              </div>
+            )}
             <TextArea
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -101,6 +138,7 @@ const HomePage = () => {
               icon={<PlayCircleOutlined />}
               onClick={handleExecute}
               loading={loading}
+              disabled={userStats?.remaining_executions === 0}
               style={{ marginTop: 16 }}
               size="large"
             >
