@@ -1,15 +1,63 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'FangSong', '仿宋', STFangSong, '华文仿宋', serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'FangSong', '仿宋', STFangSong, '华文仿宋', 'Courier New', monospace;
+}
+
+/* Global Ant Design component font overrides */
+* {
+  font-family: 'FangSong', '仿宋', STFangSong, '华文仿宋', serif !important;
+}
+
+/* Code areas should use monospace fonts */
+.code-editor, .code-output, pre, code {
+  font-family: 'Courier New', Monaco, Consolas, 'Lucida Console', monospace !important;
+}
+
+/* Specific component overrides */
+.ant-typography,
+.ant-title,
+.ant-btn,
+.ant-input,
+.ant-input-textarea,
+.ant-table,
+.ant-card,
+.ant-menu,
+.ant-statistic,
+.ant-form-item-label > label,
+.ant-select,
+.ant-alert,
+.ant-tag,
+.ant-divider,
+.ant-space,
+.ant-layout,
+.ant-header,
+.ant-content,
+.ant-footer,
+.ant-modal,
+.ant-drawer,
+.ant-popover,
+.ant-tooltip {
+  font-family: 'FangSong', '仿宋', STFangSong, '华文仿宋', serif !important;
+}
+
+/* Icons should remain as system fonts */
+.anticon {
+  font-family: 'anticon' !important;
+}
+
+/* Code editor specific styling */
+.code-editor {
+  font-family: 'Courier New', Monaco, Consolas, 'Lucida Console', monospace !important;
+}
+
+.code-output {
+  font-family: 'Courier New', Monaco, Consolas, 'Lucida Console', monospace !important;
 }
 
 .ant-layout {

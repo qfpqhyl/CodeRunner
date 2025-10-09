@@ -85,7 +85,8 @@ const HomePage = () => {
               onChange={(e) => setCode(e.target.value)}
               placeholder="Enter your Python code here..."
               rows={12}
-              style={{ fontFamily: 'monospace', fontSize: '14px' }}
+              className="code-editor"
+              style={{ fontSize: '14px' }}
             />
             <Button
               type="primary"
@@ -137,14 +138,13 @@ const HomePage = () => {
                   </div>
                   <div>
                     <strong>Output:</strong>
-                    <pre style={{
+                    <pre className="code-output" style={{
                       background: '#f5f5f5',
                       padding: '12px',
                       borderRadius: '4px',
                       marginTop: '8px',
                       maxHeight: '300px',
                       overflow: 'auto',
-                      fontFamily: 'monospace',
                       fontSize: '13px'
                     }}>
                       {result.result}
@@ -174,7 +174,6 @@ const HomePage = () => {
                   <div key={execution.id} style={{
                     borderBottom: '1px solid #f0f0f0',
                     padding: '12px 0',
-                    fontFamily: 'monospace',
                     fontSize: '12px'
                   }}>
                     <div style={{
@@ -193,7 +192,7 @@ const HomePage = () => {
                         {execution.execution_time}ms • {new Date(execution.created_at).toLocaleString()}
                       </span>
                     </div>
-                    <pre style={{
+                    <pre className="code-output" style={{
                       background: '#fafafa',
                       padding: '8px',
                       borderRadius: '4px',

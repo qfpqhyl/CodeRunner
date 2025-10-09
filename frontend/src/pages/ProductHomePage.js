@@ -88,7 +88,7 @@ const ProductHomePage = () => {
                   </Button>
                 }
               >
-                <pre style={{
+                <pre className="code-editor" style={{
                   background: '#f5f5f5',
                   padding: '12px',
                   borderRadius: '4px',
@@ -207,7 +207,7 @@ const ProductHomePage = () => {
                   size="small"
                   style={{ height: '100%' }}
                 >
-                  <pre style={{
+                  <pre className="code-editor" style={{
                     background: '#f5f5f5',
                     padding: '16px',
                     borderRadius: '4px',

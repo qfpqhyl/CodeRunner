@@ -69,8 +69,8 @@ const LoginPage = () => {
       <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2}>
-            <UserOutlined /> CodeRunner
-          </Title>
+              <UserOutlined /> CodeRunner
+            </Title>
         </div>
 
         {error && (
