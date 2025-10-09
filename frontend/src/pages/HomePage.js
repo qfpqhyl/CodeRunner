@@ -10,6 +10,17 @@ const { TextArea } = Input;
 const HomePage = () => {
   const { user } = useAuth();
   const [code, setCode] = useState(`# Welcome to CodeRunner\n# Write your Python code here and execute it remotely\n\nprint("Hello, World!")\nprint("Current user:", "${user?.username || 'Anonymous'}")\n\n# Try some calculations\nx = 10\ny = 20\nresult = x + y\nprint(f"{x} + {y} = {result}")`);
+
+  // Load example code from URL parameter if present
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exampleCode = urlParams.get('example');
+    if (exampleCode) {
+      setCode(decodeURIComponent(exampleCode));
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);

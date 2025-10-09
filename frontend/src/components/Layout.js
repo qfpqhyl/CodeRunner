@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout as AntLayout, Menu, Button, Typography, Space } from 'antd';
-import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined } from '@ant-design/icons';
+import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
@@ -25,14 +25,18 @@ const Layout = ({ children }) => {
     {
       key: '/',
       icon: <HomeOutlined />,
-      label: 'CodeRunner',
+      label: 'Home',
     },
-    {
+  ];
+
+  // Add Users menu item only for logged-in users
+  if (user) {
+    menuItems.push({
       key: '/users',
       icon: <UserOutlined />,
       label: 'Users',
-    },
-  ];
+    });
+  }
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
@@ -49,30 +53,52 @@ const Layout = ({ children }) => {
           <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
             CodeRunner
           </Title>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={handleMenuClick}
-            style={{
-              border: 'none',
-              marginLeft: '32px',
-              minWidth: '200px'
-            }}
-          />
+          {user && (
+            <Menu
+              mode="horizontal"
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={handleMenuClick}
+              style={{
+                border: 'none',
+                marginLeft: '32px',
+                minWidth: '200px'
+              }}
+            />
+          )}
         </div>
 
         <Space>
-          <span style={{ color: '#666' }}>
-            Welcome, {user?.full_name || user?.username}
-          </span>
-          <Button
-            type="primary"
-            icon={<LogoutOutlined />}
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
+          {user ? (
+            <>
+              <span style={{ color: '#666' }}>
+                Welcome, {user?.full_name || user?.username}
+              </span>
+              <Button
+                type="primary"
+                icon={<LogoutOutlined />}
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                icon={<LoginOutlined />}
+                onClick={() => navigate('/login')}
+              >
+                Login
+              </Button>
+              <Button
+                type="primary"
+                icon={<UserAddOutlined />}
+                onClick={() => navigate('/login')}
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </Space>
       </Header>
 

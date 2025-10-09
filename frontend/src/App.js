@@ -5,6 +5,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
+import ProductHomePage from './pages/ProductHomePage';
 import LoginPage from './pages/LoginPage';
 import UserManagement from './pages/UserManagement';
 import 'antd/dist/reset.css';
@@ -45,11 +46,9 @@ const AppContent = () => {
         <Route
           path="/"
           element={
-            <ProtectedRoute>
-              <Layout>
-                <HomePage />
-              </Layout>
-            </ProtectedRoute>
+            <Layout>
+              {isAuthenticated ? <HomePage /> : <ProductHomePage />}
+            </Layout>
           }
         />
         <Route
