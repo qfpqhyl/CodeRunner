@@ -84,3 +84,32 @@ class PasswordChange(BaseModel):
 
 class PasswordChangeByAdmin(BaseModel):
     new_password: str
+
+class APIKeyCreate(BaseModel):
+    key_name: str
+    expires_at: Optional[datetime] = None
+
+class APIKeyResponse(BaseModel):
+    id: int
+    key_name: str
+    key_value: str
+    is_active: bool
+    last_used: Optional[datetime] = None
+    usage_count: int
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class APIKeyInfo(BaseModel):
+    id: int
+    key_name: str
+    is_active: bool
+    last_used: Optional[datetime] = None
+    usage_count: int
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

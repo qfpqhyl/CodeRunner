@@ -9,6 +9,7 @@ import ProductHomePage from './pages/ProductHomePage';
 import LoginPage from './pages/LoginPage';
 import UserManagement from './pages/UserManagement';
 import CodeLibraryPage from './pages/CodeLibraryPage';
+import APIKeyPage from './pages/APIKeyPage';
 import 'antd/dist/reset.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -68,6 +69,16 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <CodeLibraryPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/api-keys"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <APIKeyPage />
               </Layout>
             </ProtectedRoute>
           }

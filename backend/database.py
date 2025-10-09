@@ -49,6 +49,19 @@ class CodeLibrary(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class APIKey(Base):
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    key_name = Column(String, index=True)
+    key_value = Column(String, unique=True, index=True)  # The actual API key
+    is_active = Column(Boolean, default=True)
+    last_used = Column(DateTime, nullable=True)
+    usage_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)  # Optional expiration date
+
 def get_db():
     db = SessionLocal()
     try:

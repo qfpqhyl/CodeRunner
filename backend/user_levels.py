@@ -7,6 +7,7 @@ USER_LEVELS = {
         "max_memory": 128,  # MB
         "daily_executions": 10,
         "max_saved_codes": 5,  # codes in library
+        "max_api_keys": 2,  # API keys limit
         "color": "#ff7875"
     },
     2: {
@@ -16,6 +17,7 @@ USER_LEVELS = {
         "max_memory": 256,  # MB
         "daily_executions": 50,
         "max_saved_codes": 20,  # codes in library
+        "max_api_keys": 5,  # API keys limit
         "color": "#ffa940"
     },
     3: {
@@ -25,6 +27,7 @@ USER_LEVELS = {
         "max_memory": 512,  # MB
         "daily_executions": 200,
         "max_saved_codes": 100,  # codes in library
+        "max_api_keys": 10,  # API keys limit
         "color": "#52c41a"
     },
     4: {
@@ -34,6 +37,7 @@ USER_LEVELS = {
         "max_memory": 1024,  # MB
         "daily_executions": -1,  # unlimited
         "max_saved_codes": -1,  # unlimited codes in library
+        "max_api_keys": -1,  # unlimited API keys
         "color": "#1890ff"
     }
 }

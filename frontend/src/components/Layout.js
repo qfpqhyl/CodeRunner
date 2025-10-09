@@ -50,6 +50,11 @@ const Layout = ({ children }) => {
       icon: <BookOutlined />,
       label: '代码库',
     },
+    {
+      key: '/api-keys',
+      icon: <KeyOutlined />,
+      label: 'API密钥',
+    },
   ];
 
   // Add Users menu item only for admin users

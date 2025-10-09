@@ -46,4 +46,10 @@ export const deleteCodeFromLibrary = (codeId) => api.delete(`/code-library/${cod
 export const changePassword = (passwordData) => api.post('/change-password', passwordData);
 export const changeUserPasswordByAdmin = (userId, passwordData) => api.post(`/admin/users/${userId}/change-password`, passwordData);
 
+// API Key endpoints
+export const createAPIKey = (keyData) => api.post('/api-keys', keyData);
+export const getAPIKeys = () => api.get('/api-keys');
+export const toggleAPIKey = (keyId) => api.put(`/api-keys/${keyId}/toggle`);
+export const deleteAPIKey = (keyId) => api.delete(`/api-keys/${keyId}`);
+
 export default api;
