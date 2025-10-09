@@ -58,4 +58,11 @@ export const getLogStatistics = (params = {}) => api.get('/admin/logs/stats', { 
 export const getLogActions = () => api.get('/admin/logs/actions');
 export const getLogResourceTypes = () => api.get('/admin/logs/resource-types');
 
+// AI Configuration endpoints
+export const createAIConfig = (configData) => api.post('/ai-configs', configData);
+export const getAIConfigs = () => api.get('/ai-configs');
+export const updateAIConfig = (configId, configData) => api.put(`/ai-configs/${configId}`, configData);
+export const deleteAIConfig = (configId) => api.delete(`/ai-configs/${configId}`);
+export const generateCodeByAI = (promptData) => api.post('/ai/generate-code', promptData);
+
 export default api;

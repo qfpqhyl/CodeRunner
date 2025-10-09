@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic, Modal, Form, message } from 'antd';
-import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined } from '@ant-design/icons';
-import { executeCode, getExecutions, getUserStats, saveCodeToLibrary } from '../services/api';
+import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic, Modal, Form, message, Collapse, Select, Slider } from 'antd';
+import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined, RobotOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons';
+import { executeCode, getExecutions, getUserStats, saveCodeToLibrary, generateCodeByAI, getAIConfigs } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
+const { Panel } = Collapse;
+const { Option } = Select;
 
 const HomePage = () => {
   const { user } = useAuth();
@@ -29,6 +31,15 @@ const HomePage = () => {
   const [userStats, setUserStats] = useState(null);
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saveForm] = Form.useForm();
+
+  // AI-related states
+  const [aiConfigs, setAIConfigs] = useState([]);
+  const [selectedAIConfig, setSelectedAIConfig] = useState(null);
+  const [aiPrompt, setAIPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratedCode, setAiGeneratedCode] = useState('');
+  const [aiMaxTokens, setAiMaxTokens] = useState(2000);
+  const [aiTemperature, setAiTemperature] = useState(0.7);
 
   const handleExecute = async () => {
     setLoading(true);
@@ -75,6 +86,59 @@ const HomePage = () => {
     }
   };
 
+  // Load AI configurations
+  const loadAIConfigs = async () => {
+    try {
+      const response = await getAIConfigs();
+      setAIConfigs(response.data);
+      // Set the active config as default
+      const activeConfig = response.data.find(config => config.is_active);
+      if (activeConfig) {
+        setSelectedAIConfig(activeConfig.id);
+      }
+    } catch (err) {
+      console.error('Failed to load AI configs:', err);
+    }
+  };
+
+  // Generate code using AI
+  const handleAIGenerateCode = async () => {
+    if (!aiPrompt.trim()) {
+      message.error('请输入代码生成需求描述');
+      return;
+    }
+
+    if (!selectedAIConfig) {
+      message.error('请先选择AI配置');
+      return;
+    }
+
+    setAiGenerating(true);
+    try {
+      const response = await generateCodeByAI({
+        prompt: aiPrompt,
+        config_id: selectedAIConfig,
+        max_tokens: aiMaxTokens,
+        temperature: aiTemperature
+      });
+
+      setAiGeneratedCode(response.data.generated_code);
+      message.success('代码生成成功！');
+    } catch (err) {
+      message.error(err.response?.data?.detail || 'AI代码生成失败');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  // Apply AI-generated code to editor
+  const handleApplyAICode = () => {
+    if (aiGeneratedCode.trim()) {
+      setCode(aiGeneratedCode);
+      message.success('AI生成的代码已应用到编辑器');
+    }
+  };
+
   React.useEffect(() => {
     // Load user stats and recent executions
     getUserStats().then(response => {
@@ -84,6 +148,9 @@ const HomePage = () => {
     getExecutions().then(response => {
       setExecutions(response.data.slice(0, 5));
     }).catch(() => {});
+
+    // Load AI configurations
+    loadAIConfigs();
   }, []);
 
   return (
@@ -149,6 +216,147 @@ const HomePage = () => {
                 </Space>
               </div>
             )}
+
+            {/* AI Code Generation Panel */}
+            <Collapse
+              ghost
+              style={{ marginBottom: 16 }}
+            >
+              <Panel
+                header={
+                  <Space>
+                    <RobotOutlined style={{ color: '#722ed1' }} />
+                    <span>AI 代码生成助手</span>
+                    {aiConfigs.length === 0 && (
+                      <span style={{ color: '#ff4d4f', fontSize: '12px' }}>(请先配置AI模型)</span>
+                    )}
+                  </Space>
+                }
+                key="ai"
+              >
+                {aiConfigs.length > 0 ? (
+                  <div style={{ padding: '12px 0' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                      {/* AI Configuration Selection */}
+                      <div>
+                        <label style={{ marginBottom: 8, display: 'block', fontSize: '14px', fontWeight: 500 }}>
+                          <SettingOutlined /> AI模型配置:
+                        </label>
+                        <Select
+                          value={selectedAIConfig}
+                          onChange={setSelectedAIConfig}
+                          style={{ width: '100%' }}
+                          placeholder="选择AI模型配置"
+                        >
+                          {aiConfigs.map(config => (
+                            <Option key={config.id} value={config.id}>
+                              {config.config_name} ({config.provider} - {config.model_name})
+                            </Option>
+                          ))}
+                        </Select>
+                      </div>
+
+                      {/* Prompt Input */}
+                      <div>
+                        <label style={{ marginBottom: 8, display: 'block', fontSize: '14px', fontWeight: 500 }}>
+                          <ThunderboltOutlined /> 代码需求描述:
+                        </label>
+                        <TextArea
+                          value={aiPrompt}
+                          onChange={(e) => setAIPrompt(e.target.value)}
+                          placeholder="描述您想要生成的代码功能，例如：创建一个计算斐波那契数列的函数"
+                          rows={3}
+                          style={{ fontSize: '14px' }}
+                        />
+                      </div>
+
+                      {/* Advanced Settings */}
+                      <div>
+                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: 500 }}>
+                              最大令牌数: {aiMaxTokens}
+                            </label>
+                            <Slider
+                              min={100}
+                              max={4000}
+                              value={aiMaxTokens}
+                              onChange={setAiMaxTokens}
+                              style={{ marginTop: 4 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: 500 }}>
+                              创造性 (Temperature): {aiTemperature}
+                            </label>
+                            <Slider
+                              min={0.1}
+                              max={2.0}
+                              step={0.1}
+                              value={aiTemperature}
+                              onChange={setAiTemperature}
+                              style={{ marginTop: 4 }}
+                            />
+                          </div>
+                        </Space>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <Space>
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          onClick={handleAIGenerateCode}
+                          loading={aiGenerating}
+                          disabled={!selectedAIConfig || !aiPrompt.trim()}
+                          style={{ background: 'linear-gradient(135deg, #722ed1 0%, #531dab 100%)', border: 'none' }}
+                        >
+                          {aiGenerating ? '生成中...' : '生成代码'}
+                        </Button>
+                        {aiGeneratedCode && (
+                          <Button
+                            icon={<CodeOutlined />}
+                            onClick={handleApplyAICode}
+                          >
+                            应用到编辑器
+                          </Button>
+                        )}
+                      </Space>
+
+                      {/* Generated Code Preview */}
+                      {aiGeneratedCode && (
+                        <div>
+                          <label style={{ marginBottom: 8, display: 'block', fontSize: '14px', fontWeight: 500 }}>
+                            生成的代码预览:
+                          </label>
+                          <pre style={{
+                            background: '#f6f8ff',
+                            border: '1px solid #d6e4ff',
+                            borderRadius: '6px',
+                            padding: '12px',
+                            fontSize: '12px',
+                            maxHeight: '200px',
+                            overflow: 'auto',
+                            margin: 0
+                          }}>
+                            {aiGeneratedCode}
+                          </pre>
+                        </div>
+                      )}
+                    </Space>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                    <RobotOutlined style={{ fontSize: '24px', marginBottom: '8px' }} />
+                    <div>暂无AI模型配置</div>
+                    <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                      请先在AI配置页面添加模型配置
+                    </div>
+                  </div>
+                )}
+              </Panel>
+            </Collapse>
+
             <TextArea
               value={code}
               onChange={(e) => setCode(e.target.value)}

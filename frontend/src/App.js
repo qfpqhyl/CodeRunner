@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import SystemManagement from './pages/SystemManagement';
 import CodeLibraryPage from './pages/CodeLibraryPage';
 import APIKeyPage from './pages/APIKeyPage';
+import AIConfigPage from './pages/AIConfigPage';
 import 'antd/dist/reset.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -79,6 +80,16 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <APIKeyPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-configs"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIConfigPage />
               </Layout>
             </ProtectedRoute>
           }

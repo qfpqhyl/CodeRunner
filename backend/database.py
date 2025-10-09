@@ -64,6 +64,20 @@ class APIKey(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)  # Optional expiration date
 
+class AIConfig(Base):
+    __tablename__ = "ai_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    config_name = Column(String, index=True)
+    provider = Column(String, default="qwen")  # qwen, openai, etc.
+    model_name = Column(String, default="qwen-plus")
+    api_key = Column(String)
+    base_url = Column(String, default="https://dashscope.aliyuncs.com/compatible-mode/v1")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
 

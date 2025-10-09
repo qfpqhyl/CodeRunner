@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout as AntLayout, Menu, Button, Typography, Space, Dropdown, Modal, Form, Input, message } from 'antd';
-import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined, BookOutlined, KeyOutlined } from '@ant-design/icons';
+import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined, BookOutlined, KeyOutlined, RobotOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { changePassword } from '../services/api';
@@ -54,6 +54,11 @@ const Layout = ({ children }) => {
       key: '/api-keys',
       icon: <KeyOutlined />,
       label: 'API密钥',
+    },
+    {
+      key: '/ai-configs',
+      icon: <RobotOutlined />,
+      label: 'AI配置',
     },
   ];
 

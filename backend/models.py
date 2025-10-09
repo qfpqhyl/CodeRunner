@@ -129,3 +129,51 @@ class CodeExecuteByAPIResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# AI Configuration Models
+class AIConfigCreate(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
+    config_name: str
+    provider: Optional[str] = "qwen"
+    model_name: Optional[str] = "qwen-plus"
+    api_key: str
+    base_url: Optional[str] = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    is_active: Optional[bool] = True
+
+class AIConfigUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
+    config_name: Optional[str] = None
+    provider: Optional[str] = None
+    model_name: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class AIConfigResponse(BaseModel):
+    model_config = {"protected_namespaces": (), "from_attributes": True}
+
+    id: int
+    user_id: int
+    config_name: str
+    provider: str
+    model_name: str
+    api_key: str
+    base_url: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class AICodeGenerateRequest(BaseModel):
+    prompt: str
+    config_id: Optional[int] = None  # Use specific AI config, if not provided use active one
+    max_tokens: Optional[int] = 2000
+    temperature: Optional[float] = 0.7
+
+class AICodeGenerateResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
+    generated_code: str
+    model_used: str
+    tokens_used: Optional[int] = None
