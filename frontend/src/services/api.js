@@ -42,4 +42,8 @@ export const getCodeFromLibrary = (codeId) => api.get(`/code-library/${codeId}`)
 export const updateCodeInLibrary = (codeId, codeData) => api.put(`/code-library/${codeId}`, codeData);
 export const deleteCodeFromLibrary = (codeId) => api.delete(`/code-library/${codeId}`);
 
+// Password change endpoints
+export const changePassword = (passwordData) => api.post('/change-password', passwordData);
+export const changeUserPasswordByAdmin = (userId, passwordData) => api.post(`/admin/users/${userId}/change-password`, passwordData);
+
 export default api;

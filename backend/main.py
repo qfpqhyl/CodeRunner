@@ -8,7 +8,7 @@ import tempfile
 import os
 import time
 from database import get_db, init_db, User, CodeExecution, CodeLibrary
-from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse
+from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin
 from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, USER_LEVELS
 
@@ -79,6 +79,49 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
 @app.get("/users/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@app.post("/change-password")
+def change_password(
+    password_data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change current user's password"""
+    # Verify current password
+    if not authenticate_user(db, current_user.username, password_data.current_password):
+        raise HTTPException(status_code=400, detail="当前密码不正确")
+
+    # Check new password length
+    if len(password_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码至少需要6个字符")
+
+    # Update password
+    current_user.hashed_password = get_password_hash(password_data.new_password)
+    db.commit()
+
+    return {"message": "密码修改成功"}
+
+@app.post("/admin/users/{user_id}/change-password")
+def change_user_password_by_admin(
+    user_id: int,
+    password_data: PasswordChangeByAdmin,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin can change any user's password"""
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Check new password length
+    if len(password_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码至少需要6个字符")
+
+    # Update password
+    db_user.hashed_password = get_password_hash(password_data.new_password)
+    db.commit()
+
+    return {"message": "用户密码修改成功"}
 
 @app.get("/users", response_model=list[UserResponse])
 def list_users(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
@@ -241,6 +284,10 @@ def update_user_by_admin(
     for field, value in user_update.items():
         if hasattr(db_user, field) and field not in ["id", "hashed_password", "created_at"]:
             setattr(db_user, field, value)
+
+    # Handle password update separately
+    if "password" in user_update and user_update["password"]:
+        db_user.hashed_password = get_password_hash(user_update["password"])
 
     db.commit()
     db.refresh(db_user)

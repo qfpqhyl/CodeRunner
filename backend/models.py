@@ -77,3 +77,10 @@ class CodeLibraryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+class PasswordChangeByAdmin(BaseModel):
+    new_password: str

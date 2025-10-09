@@ -5,9 +5,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  PlayCircleOutlined,
   CopyOutlined,
-  SearchOutlined,
   EyeOutlined
 } from '@ant-design/icons';
 import {
