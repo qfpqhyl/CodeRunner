@@ -21,6 +21,12 @@ export const login = (credentials) => api.post('/login', credentials);
 export const getCurrentUser = () => api.get('/users/me');
 export const getUsers = () => api.get('/users');
 
+// Admin endpoints
+export const createUser = (userData) => api.post('/admin/users', userData);
+export const updateUser = (userId, userData) => api.put(`/admin/users/${userId}`, userData);
+export const deleteUser = (userId) => api.delete(`/admin/users/${userId}`);
+export const getAllExecutions = () => api.get('/admin/executions');
+
 // Code execution endpoints
 export const executeCode = (codeData) => api.post('/execute', codeData);
 export const getExecutions = () => api.get('/executions');

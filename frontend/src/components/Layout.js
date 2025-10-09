@@ -29,12 +29,12 @@ const Layout = ({ children }) => {
     },
   ];
 
-  // Add Users menu item only for logged-in users
-  if (user) {
+  // Add Users menu item only for admin users
+  if (user && user.is_admin) {
     menuItems.push({
       key: '/users',
       icon: <UserOutlined />,
-      label: 'Users',
+      label: '用户管理',
     });
   }
 

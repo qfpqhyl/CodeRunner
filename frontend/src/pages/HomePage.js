@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic } from 'antd';
-import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined } from '@ant-design/icons';
 import { executeCode, getExecutions } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
@@ -9,6 +9,9 @@ const { TextArea } = Input;
 
 const HomePage = () => {
   const { user } = useAuth();
+
+  // Check if user has admin permissions
+  const isAdmin = user?.is_admin || false;
   const [code, setCode] = useState(`# Welcome to CodeRunner\n# Write your Python code here and execute it remotely\n\nprint("Hello, World!")\nprint("Current user:", "${user?.username || 'Anonymous'}")\n\n# Try some calculations\nx = 10\ny = 20\nresult = x + y\nprint(f"{x} + {y} = {result}")`);
 
   // Load example code from URL parameter if present
@@ -65,12 +68,17 @@ const HomePage = () => {
             </Paragraph>
             <Space size="large">
               <Statistic
-                title="Welcome"
+                title="欢迎"
                 value={user?.full_name || user?.username || 'Guest'}
                 prefix={<CheckCircleOutlined />}
               />
               <Statistic
-                title="Recent Executions"
+                title="用户角色"
+                value={isAdmin ? '管理员' : '普通用户'}
+                prefix={<UserOutlined />}
+              />
+              <Statistic
+                title="最近执行"
                 value={executions.length}
                 prefix={<ClockCircleOutlined />}
               />

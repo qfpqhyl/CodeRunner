@@ -19,6 +19,7 @@ class User(Base):
     hashed_password = Column(String)
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class CodeExecution(Base):
@@ -41,3 +42,26 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+    # Check if admin user exists, create if not
+    db = SessionLocal()
+    try:
+        admin_user = db.query(User).filter(User.is_admin == True).first()
+        if not admin_user:
+            # Create default admin user
+            from auth import get_password_hash
+            admin_password = "admin123"  # Default password, should be changed
+            admin_user = User(
+                username="admin",
+                email="admin@coderunner.com",
+                hashed_password=get_password_hash(admin_password),
+                full_name="System Administrator",
+                is_admin=True,
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
+            print(f"Default admin user created: username=admin, password={admin_password}")
+            print("Please change the default password after first login!")
+    finally:
+        db.close()
