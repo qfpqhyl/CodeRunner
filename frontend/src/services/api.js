@@ -85,4 +85,7 @@ export const importDatabase = (file) => {
 
 export const getDatabaseInfo = () => api.get('/admin/database/info');
 
+// Conda environments endpoint
+export const getCondaEnvironments = () => api.get('/conda-environments');
+
 export default api;

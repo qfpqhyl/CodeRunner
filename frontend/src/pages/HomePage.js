@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic, Modal, Form, message, Collapse, Select, Slider } from 'antd';
 import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined, RobotOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons';
-import { executeCode, getExecutions, getUserStats, saveCodeToLibrary, generateCodeByAI, getAIConfigs } from '../services/api';
+import { executeCode, getExecutions, getUserStats, saveCodeToLibrary, generateCodeByAI, getAIConfigs, getCondaEnvironments } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph } = Typography;
@@ -32,6 +32,11 @@ const HomePage = () => {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saveForm] = Form.useForm();
 
+  // Conda environment states
+  const [condaEnvs, setCondaEnvs] = useState(['base']); // Default to base only
+  const [selectedCondaEnv, setSelectedCondaEnv] = useState('base');
+  const [loadingEnvs, setLoadingEnvs] = useState(false);
+
   // AI-related states
   const [aiConfigs, setAIConfigs] = useState([]);
   const [selectedAIConfig, setSelectedAIConfig] = useState(null);
@@ -47,7 +52,10 @@ const HomePage = () => {
     setResult(null);
 
     try {
-      const response = await executeCode({ code });
+      const response = await executeCode({
+        code,
+        conda_env: selectedCondaEnv
+      });
       setResult(response.data);
 
       // Refresh executions list
@@ -75,7 +83,8 @@ const HomePage = () => {
         description: values.description,
         code: code,
         language: 'python',
-        tags: values.tags
+        tags: values.tags,
+        conda_env: selectedCondaEnv
       });
 
       message.success('代码已保存到代码库！');
@@ -85,6 +94,33 @@ const HomePage = () => {
       message.error(err.response?.data?.detail || '保存失败');
     }
   };
+
+  // Load conda environments
+  const loadCondaEnvironments = React.useCallback(async () => {
+    const controller = new AbortController();
+
+    setLoadingEnvs(true);
+    try {
+      const response = await getCondaEnvironments();
+      if (!controller.signal.aborted) {
+        setCondaEnvs(response.data);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error('Failed to load conda environments:', error);
+        // Fallback to base environment if loading fails
+        setCondaEnvs(['base']);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoadingEnvs(false);
+      }
+    }
+
+    return () => {
+      controller.abort();
+    };
+  }, []); // Remove loadingEnvs dependency to prevent infinite loop
 
   // Load AI configurations
   const loadAIConfigs = async () => {
@@ -151,7 +187,10 @@ const HomePage = () => {
 
     // Load AI configurations
     loadAIConfigs();
-  }, []);
+
+    // Load conda environments
+    loadCondaEnvironments();
+  }, [loadCondaEnvironments]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
@@ -356,6 +395,30 @@ const HomePage = () => {
                 )}
               </Panel>
             </Collapse>
+
+            {/* Conda Environment Selector */}
+            <div style={{ marginBottom: 16, padding: 12, background: '#f0f9ff', borderRadius: 6, border: '1px solid #d6e4ff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 500, fontSize: '14px', color: '#1890ff' }}>
+                    <SettingOutlined /> 运行环境:
+                  </span>
+                  <Select
+                    value={selectedCondaEnv}
+                    onChange={setSelectedCondaEnv}
+                    style={{ width: 200, marginLeft: 12 }}
+                    loading={loadingEnvs}
+                    options={condaEnvs.map(env => ({
+                      label: env === 'base' ? `${env} (默认)` : env,
+                      value: env
+                    }))}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  选择代码执行的conda环境
+                </div>
+              </div>
+            </div>
 
             <TextArea
               value={code}

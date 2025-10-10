@@ -285,9 +285,15 @@ def execute_code(
     try:
         start_time = time.time()
 
+        # Determine which python executable to use based on conda_env
+        if code_request.conda_env and code_request.conda_env != "base":
+            python_executable = f"conda run -n {code_request.conda_env} python"
+        else:
+            python_executable = "python"
+
         # Execute the Python code with user level limits
         result = subprocess.run(
-            ['python', temp_file],
+            python_executable.split() + [temp_file],
             capture_output=True,
             text=True,
             timeout=level_config["max_execution_time"]
@@ -521,7 +527,8 @@ def save_code_to_library(
         code=code_data.code,
         language=code_data.language,
         is_public=code_data.is_public,
-        tags=code_data.tags
+        tags=code_data.tags,
+        conda_env=code_data.conda_env
     )
 
     db.add(library_entry)
@@ -574,7 +581,7 @@ def update_code_in_library(
         raise HTTPException(status_code=404, detail="代码片段未找到")
 
     # Update fields
-    update_data = code_update.dict(exclude_unset=True)
+    update_data = code_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(code_entry, field, value)
 
@@ -742,9 +749,15 @@ def execute_code_by_api(
     try:
         start_time = time.time()
 
+        # Determine which python executable to use based on conda_env
+        if code_entry.conda_env and code_entry.conda_env != "base":
+            python_executable = f"conda run -n {code_entry.conda_env} python"
+        else:
+            python_executable = "python"
+
         # Execute the Python code with user level limits
         result = subprocess.run(
-            ['python', temp_file],
+            python_executable.split() + [temp_file],
             capture_output=True,
             text=True,
             timeout=level_config["max_execution_time"]
@@ -901,6 +914,48 @@ def get_code_by_api(
         raise HTTPException(status_code=404, detail="代码片段未找到或无权访问")
 
     return code_entry
+
+@app.get("/conda-environments")
+def get_conda_environments(current_user: User = Depends(get_current_user)):
+    """Get available conda environments"""
+    try:
+        # Run conda env list command
+        result = subprocess.run(
+            ["conda", "env", "list"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode != 0:
+            # Fallback to basic environments if conda command fails
+            return ["base"]
+
+        # Parse conda env list output
+        environments = ["base"]  # Always include base
+        lines = result.stdout.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            # Skip empty lines, headers, and lines with #
+            if not line or line.startswith('#') or line.startswith('Name'):
+                continue
+
+            # Extract environment name (first column)
+            parts = line.split()
+            if parts:
+                env_name = parts[0]
+                if env_name not in environments:
+                    environments.append(env_name)
+
+        return environments
+
+    except subprocess.TimeoutExpired:
+        return ["base"]
+    except Exception as e:
+        # Log error but return basic environments
+        print(f"Failed to get conda environments: {e}")
+        return ["base"]
 
 @app.get("/")
 def read_root():
@@ -1137,7 +1192,7 @@ def update_ai_config(
         raise HTTPException(status_code=404, detail="AI配置未找到")
 
     # Update fields
-    update_data = config_update.dict(exclude_unset=True)
+    update_data = config_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(ai_config, field, value)
 

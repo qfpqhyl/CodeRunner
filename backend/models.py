@@ -35,6 +35,7 @@ class TokenData(BaseModel):
 
 class CodeExecutionRequest(BaseModel):
     code: str
+    conda_env: Optional[str] = "base"
 
 class CodeExecutionResponse(BaseModel):
     id: int
@@ -54,6 +55,7 @@ class CodeLibraryCreate(BaseModel):
     language: Optional[str] = "python"
     is_public: Optional[bool] = False
     tags: Optional[str] = None
+    conda_env: Optional[str] = "base"
 
 class CodeLibraryUpdate(BaseModel):
     title: Optional[str] = None
@@ -62,6 +64,7 @@ class CodeLibraryUpdate(BaseModel):
     language: Optional[str] = None
     is_public: Optional[bool] = None
     tags: Optional[str] = None
+    conda_env: Optional[str] = None
 
 class CodeLibraryResponse(BaseModel):
     id: int
@@ -72,6 +75,7 @@ class CodeLibraryResponse(BaseModel):
     language: str
     is_public: bool
     tags: Optional[str] = None
+    conda_env: str
     created_at: datetime
     updated_at: datetime
 

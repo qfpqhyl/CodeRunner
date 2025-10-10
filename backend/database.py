@@ -48,6 +48,7 @@ class CodeLibrary(Base):
     language = Column(String, default="python")
     is_public = Column(Boolean, default=False)
     tags = Column(String)  # Comma-separated tags
+    conda_env = Column(String, default="base")  # Conda environment name
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

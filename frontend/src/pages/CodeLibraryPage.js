@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Button, Input, Typography, Space, Table, Tag, Modal, Form, message, Popconfirm, Row, Col, Statistic, Tabs, Alert } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Input, Typography, Space, Table, Tag, Modal, Form, message, Popconfirm, Row, Col, Statistic, Tabs, Alert, Select } from 'antd';
 import {
   BookOutlined,
   PlusOutlined,
@@ -14,7 +14,8 @@ import {
   deleteCodeFromLibrary,
   updateCodeInLibrary,
   saveCodeToLibrary,
-  getUserStats
+  getUserStats,
+  getCondaEnvironments
 } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
@@ -29,6 +30,10 @@ const CodeLibraryPage = () => {
   const [searchText, setSearchText] = useState('');
   const [userStats, setUserStats] = useState(null);
 
+  // Available conda environments (fetched from backend)
+  const [condaEnvs, setCondaEnvs] = useState(['base']); // Default to base only
+  const [loadingEnvs, setLoadingEnvs] = useState(false);
+
   // Modal states
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -40,11 +45,6 @@ const CodeLibraryPage = () => {
 
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
-
-  useEffect(() => {
-    loadCodes();
-    loadUserStats();
-  }, []);
 
   const loadCodes = async () => {
     setLoading(true);
@@ -67,6 +67,38 @@ const CodeLibraryPage = () => {
     }
   };
 
+  const loadCondaEnvironments = useCallback(async () => {
+    const controller = new AbortController();
+
+    setLoadingEnvs(true);
+    try {
+      const response = await getCondaEnvironments();
+      if (!controller.signal.aborted) {
+        setCondaEnvs(response.data);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error('Failed to load conda environments:', error);
+        // Fallback to base environment if loading fails
+        setCondaEnvs(['base']);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoadingEnvs(false);
+      }
+    }
+
+    return () => {
+      controller.abort();
+    };
+  }, []); // Remove loadingEnvs dependency to prevent infinite loop
+
+  useEffect(() => {
+    loadCodes();
+    loadUserStats();
+    loadCondaEnvironments();
+  }, [loadCondaEnvironments]); // Include loadCondaEnvironments in dependencies
+
   const handleAddCode = async (values) => {
     try {
       await saveCodeToLibrary({
@@ -74,7 +106,8 @@ const CodeLibraryPage = () => {
         description: values.description,
         code: values.code,
         language: 'python',
-        tags: values.tags
+        tags: values.tags,
+        conda_env: values.conda_env || 'base'
       });
 
       message.success('代码添加成功！');
@@ -93,7 +126,8 @@ const CodeLibraryPage = () => {
         title: values.title,
         description: values.description,
         code: values.code,
-        tags: values.tags
+        tags: values.tags,
+        conda_env: values.conda_env
       });
 
       message.success('代码更新成功！');
@@ -128,7 +162,8 @@ const CodeLibraryPage = () => {
       title: code.title,
       description: code.description,
       code: code.code,
-      tags: code.tags
+      tags: code.tags,
+      conda_env: code.conda_env || 'base'
     });
     setEditModalVisible(true);
   };
@@ -198,6 +233,17 @@ const CodeLibraryPage = () => {
           </Tag>
         ));
       },
+    },
+    {
+      title: '环境',
+      dataIndex: 'conda_env',
+      key: 'conda_env',
+      width: 100,
+      render: (conda_env) => (
+        <Tag color={conda_env === 'base' ? 'default' : 'processing'}>
+          {conda_env}
+        </Tag>
+      ),
     },
     {
       title: '语言',
@@ -388,6 +434,23 @@ const CodeLibraryPage = () => {
             <Input placeholder="用逗号分隔多个标签，如：算法,排序,Python" />
           </Form.Item>
 
+          <Form.Item
+            name="conda_env"
+            label="运行环境"
+            rules={[{ required: true, message: '请选择运行环境' }]}
+            initialValue="base"
+          >
+            <Select
+              placeholder="选择conda环境"
+              style={{ width: '100%' }}
+              loading={loadingEnvs}
+              options={condaEnvs.map(env => ({
+                label: env === 'base' ? `${env} (默认)` : env,
+                value: env
+              }))}
+            />
+          </Form.Item>
+
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => {
@@ -448,6 +511,22 @@ const CodeLibraryPage = () => {
               placeholder="粘贴或输入你的Python代码..."
               rows={12}
               style={{ fontSize: '14px', fontFamily: 'monospace' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="conda_env"
+            label="运行环境"
+            rules={[{ required: true, message: '请选择运行环境' }]}
+          >
+            <Select
+              placeholder="选择conda环境"
+              style={{ width: '100%' }}
+              loading={loadingEnvs}
+              options={condaEnvs.map(env => ({
+                label: env === 'base' ? `${env} (默认)` : env,
+                value: env
+              }))}
             />
           </Form.Item>
 
@@ -541,6 +620,10 @@ const CodeLibraryPage = () => {
 
                     <div style={{ marginBottom: 16 }}>
                       <Text strong>语言：</Text> <Tag color="green">{currentCode.language}</Tag>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <Text strong>运行环境：</Text> <Tag color={currentCode.conda_env === 'base' ? 'default' : 'processing'}>{currentCode.conda_env}</Tag>
                     </div>
 
                     <div>
