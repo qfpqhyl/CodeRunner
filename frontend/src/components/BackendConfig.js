@@ -30,10 +30,12 @@ const BackendConfig = ({ onConfigured }) => {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    // Initialize form with current backend URL
+    // Initialize form with current backend URL but don't auto-test
     const currentUrl = getCurrentBackendUrl();
     form.setFieldsValue({ backendUrl: currentUrl });
-    testConnection(currentUrl);
+    // Reset connection status to unknown
+    setConnectionStatus('unknown');
+    setErrorMessage('');
   }, [form]);
 
   const testConnection = async (url) => {
@@ -87,7 +89,7 @@ const BackendConfig = ({ onConfigured }) => {
       await updateBackendUrl(values.backendUrl);
 
       // Test the connection after saving
-      const result = await testBackendConnection(values.backendUrl);
+      const result = testBackendConnection(values.backendUrl);
       if (result.success) {
         setConnectionStatus('success');
         if (onConfigured) {
@@ -137,7 +139,10 @@ const BackendConfig = ({ onConfigured }) => {
         后端服务配置
       </Title>
 
-      <Card style={{ marginBottom: 20 }} bodyStyle={{ padding: 20 }}>
+      <Card
+        style={{ marginBottom: 20 }}
+        styles={{ body: { padding: 20 } }}
+      >
         <div style={{ marginBottom: 20 }}>
           <Space align="center" style={{ marginBottom: 16 }}>
             {getStatusIcon()}

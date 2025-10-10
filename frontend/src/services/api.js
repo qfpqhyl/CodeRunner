@@ -55,7 +55,15 @@ export const updateBackendUrl = (newUrl) => {
 export const testBackendConnection = async (url) => {
   try {
     const testUrl = url.replace(/\/$/, '');
-    await axios.get(`${testUrl}/`, { timeout: 5000 });
+    await axios.get(`${testUrl}/`, {
+      timeout: 5000,
+      // Add CORS headers to handle cross-origin requests
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Set withCredentials to false to avoid CORS issues
+      withCredentials: false
+    });
     return { success: true, message: '连接成功' };
   } catch (error) {
     let message = '连接失败';
@@ -63,8 +71,12 @@ export const testBackendConnection = async (url) => {
       message = '连接超时';
     } else if (error.code === 'ERR_NETWORK') {
       message = '网络错误，无法访问';
+    } else if (error.code === 'ECONNREFUSED') {
+      message = '连接被拒绝，请检查后端服务是否启动';
     } else if (error.response?.status === 404) {
       message = '后端服务不存在，请检查地址是否正确';
+    } else if (error.response?.status === 0 || error.message.includes('CORS')) {
+      message = '跨域请求失败，请检查后端CORS配置';
     }
     return { success: false, message };
   }
