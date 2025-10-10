@@ -32,13 +32,8 @@ const LoginPage = () => {
   useEffect(() => {
     // Check if backend is already configured
     const currentUrl = getCurrentBackendUrl();
-    // In production, backend is typically pre-configured, so no need to show the config panel
-    if (currentUrl && currentUrl !== 'http://localhost:8000') {
+    if (currentUrl && currentUrl !== 'http://localhost:8000' && currentUrl !== '/api') {
       setBackendConfigured(true);
-      // In production environment, hide the config panel by default
-      if (process.env.NODE_ENV === 'production') {
-        setShowConfigPanel(false);
-      }
     }
   }, []);
 
@@ -94,8 +89,8 @@ const LoginPage = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* 左侧：部署教程 - 只在开发环境显示 */}
-      {showConfigPanel && process.env.NODE_ENV === 'development' && (
+      {/* 左侧：部署教程 */}
+      {showConfigPanel && (
         <Sider
           width={600}
           style={{
@@ -109,7 +104,7 @@ const LoginPage = () => {
       )}
 
       {/* 右侧：登录界面 */}
-      <Layout style={{ flex: showConfigPanel && process.env.NODE_ENV === 'development' ? 1 : 1 }}>
+      <Layout style={{ flex: 1 }}>
         <Content style={{
           display: 'flex',
           justifyContent: 'center',
@@ -141,31 +136,29 @@ const LoginPage = () => {
           }} />
 
           <div style={{ width: '100%', maxWidth: 480, position: 'relative', zIndex: 1 }}>
-            {/* 切换按钮 - 只在开发环境显示 */}
-            {process.env.NODE_ENV === 'development' && (
-              <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                <Button
-                  type="text"
-                  onClick={toggleConfigPanel}
-                  style={{
-                    color: '#1890ff',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '20px',
-                    padding: '4px 16px'
-                  }}
-                >
-                  {showConfigPanel ? (
-                    <>
-                      <SettingOutlined /> 隐藏部署教程
-                    </>
-                  ) : (
-                    <>
-                      <BookOutlined /> 显示部署教程
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
+            {/* 切换按钮 */}
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <Button
+                type="text"
+                onClick={toggleConfigPanel}
+                style={{
+                  color: '#1890ff',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '20px',
+                  padding: '4px 16px'
+                }}
+              >
+                {showConfigPanel ? (
+                  <>
+                    <SettingOutlined /> 隐藏部署教程
+                  </>
+                ) : (
+                  <>
+                    <BookOutlined /> 显示部署教程
+                  </>
+                )}
+              </Button>
+            </div>
 
             <Card style={{
               boxShadow: '0 20px 60px rgba(0,0,0,0.08)',
@@ -201,13 +194,13 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              {/* 后端配置状态提示 - 只在开发环境显示 */}
-              {backendConfigured && process.env.NODE_ENV === 'development' && (
+              {/* 后端配置状态提示 */}
+              {backendConfigured && (
                 <Alert
                   message={
                     <Space>
                       <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                      <span>后端已配置: {getCurrentBackendUrl()}</span>
+                      <span>后端服务已连接</span>
                     </Space>
                   }
                   type="success"
