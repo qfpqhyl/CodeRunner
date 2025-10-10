@@ -15,7 +15,7 @@ import DeploymentTutorial from '../components/DeploymentTutorial';
 import BackendConfig from '../components/BackendConfig';
 
 const { Title } = Typography;
-const { Sider, Content } = Layout;
+const { Content } = Layout;
 
 const LoginPage = () => {
   const { login: authLogin } = useAuth();
@@ -96,32 +96,42 @@ const LoginPage = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
       {/* 左侧：部署教程 */}
       {showConfigPanel && (
-        <Sider
-          width={600}
+        <div
           style={{
+            width: 600,
             background: colorBgContainer,
             borderRight: '1px solid #f0f0f0',
-            overflow: 'auto'
+            overflow: 'auto',
+            flexShrink: 0
           }}
         >
           <DeploymentTutorial />
-        </Sider>
+        </div>
       )}
 
       {/* 右侧：登录界面 */}
-      <Layout style={{ flex: 1 }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'fixed',
+        right: 0,
+        top: 0,
+        height: '100vh',
+        width: showConfigPanel ? 'calc(100vw - 600px)' : '100vw',
+        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)'
+      }}>
         <Content style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)',
-          position: 'relative',
+          height: '100%',
           overflow: 'hidden',
-          padding: '20px'
+          padding: '20px',
+          position: 'relative'
         }}>
           {/* Background decoration */}
           <div style={{
@@ -427,8 +437,8 @@ const LoginPage = () => {
             </Card>
           </div>
         </Content>
-      </Layout>
-    </Layout>
+      </div>
+    </div>
   );
 };
 

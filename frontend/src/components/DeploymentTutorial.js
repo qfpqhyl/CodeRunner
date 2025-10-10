@@ -11,7 +11,9 @@ import {
 import {
   CheckCircleOutlined,
   CopyOutlined,
-  RocketOutlined
+  RocketOutlined,
+  GlobalOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
@@ -73,12 +75,12 @@ const DeploymentTutorial = () => {
     <div style={{ padding: '24px', height: '100%', overflow: 'auto' }}>
       <Title level={4} style={{ marginBottom: 24, color: '#1e293b' }}>
         <RocketOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-        CodeRunner Docker 部署教程
+        CodeRunner 快速部署教程
       </Title>
 
       <Alert
-        message="使用阿里云镜像快速部署"
-        description="本教程将指导您使用阿里云镜像服务快速部署CodeRunner。整个过程大约需要5分钟。"
+        message="两步完成部署"
+        description="本教程将指导您通过两个简单步骤完成CodeRunner的部署和公网访问配置。整个过程大约需要5分钟。"
         type="info"
         showIcon
         style={{ marginBottom: 24 }}
@@ -90,11 +92,11 @@ const DeploymentTutorial = () => {
           items={[
             {
               key: 'aliyun',
-              label: '使用阿里云镜像（推荐）',
+              label: '步骤1：Docker部署（推荐）',
               children: (
                 <div>
                   <Title level={5} style={{ color: '#1e293b', marginBottom: 16 }}>
-                    方法1：使用阿里云镜像
+                    步骤1：使用阿里云镜像部署
                   </Title>
 
                   <Paragraph style={{ color: '#64748b', marginBottom: 20 }}>
@@ -129,8 +131,74 @@ const DeploymentTutorial = () => {
               )
             },
             {
+              key: 'tunnel',
+              label: (
+                <span>
+                  <ThunderboltOutlined style={{ marginRight: 4 }} />
+                  步骤2：HTTPS隧道配置
+                </span>
+              ),
+              children: (
+                <div>
+                  <Title level={5} style={{ color: '#1e293b', marginBottom: 16 }}>
+                    步骤2：打通HTTPS隧道（公网访问）
+                  </Title>
+
+                  <Alert
+                    message="公网访问配置"
+                    description="使用Cloudflare Tunnel为您的CodeRunner服务创建公网HTTPS访问地址，以避免出现一些网络环境下无法访问的问题。"
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 20 }}
+                  />
+
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <div>
+                      <Title level={5} style={{ color: '#059669', marginBottom: 12 }}>
+                        <GlobalOutlined style={{ marginRight: 8 }} />
+                        第一步：安装cloudflared
+                      </Title>
+                      <CommandBlock
+                        command="mkdir -p ~/cf && cd ~/cf && wget -qO cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && sudo dpkg -i cloudflared.deb && rm cloudflared.deb"
+                        description="安装Cloudflare隧道工具"
+                      />
+                    </div>
+
+                    <div>
+                      <Title level={5} style={{ color: '#059669', marginBottom: 12 }}>
+                        <GlobalOutlined style={{ marginRight: 8 }} />
+                        第二步：启动隧道并获取公网地址
+                      </Title>
+                      <CommandBlock
+                        command="cd ~/cf && nohup cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 & sleep 8 && grep -oP 'https://[^\s]+\.trycloudflare\.com' tunnel.log || tail -20 tunnel.log"
+                        description="后台启动隧道服务并显示公网地址"
+                      />
+                    </div>
+                  </Space>
+
+                  <Alert
+                    message="使用说明"
+                    description={
+                      <div>
+                        <p><strong>注意事项：</strong></p>
+                        <ul style={{ marginBottom: 12 }}>
+                          <li>确保您的Docker服务已在 <code>localhost:8000</code> 端口运行</li>
+                          <li>隧道地址是临时的，重启服务后会变化</li>
+                          <li>生成的HTTPS地址可以直接用于前端配置</li>
+                          <li>如需固定域名，请注册Cloudflare账户并创建持久隧道</li>
+                        </ul>
+                      </div>
+                    }
+                    type="success"
+                    showIcon
+                    style={{ marginTop: 20 }}
+                  />
+                </div>
+              )
+            },
+            {
               key: 'contact',
-              label: '联系我们',
+              label: '项目支持',
               children: (
                 <div style={{ textAlign: 'center', padding: '20px' }}>
                   <Title level={5} style={{ color: '#1e293b', marginBottom: 24 }}>
@@ -234,9 +302,21 @@ const DeploymentTutorial = () => {
           <Paragraph style={{ color: '#64748b' }}>
             现在您可以在右侧配置后端地址，然后开始使用 CodeRunner。
           </Paragraph>
-          <Space>
-            <Tag color="processing">后端API: http://your-server-ip:8000</Tag>
-            <Tag color="default">API文档: http://your-server-ip:8000/docs</Tag>
+          <Space direction="vertical" size="small">
+            <div>
+              <Text strong style={{ color: '#1890ff' }}>本地访问：</Text>
+              <div style={{ marginTop: 4 }}>
+                <Tag color="processing">后端API: http://localhost:8000</Tag>
+                <Tag color="default">API文档: http://localhost:8000/docs</Tag>
+              </div>
+            </div>
+            <div>
+              <Text strong style={{ color: '#52c41a' }}>公网访问（如配置隧道）：</Text>
+              <div style={{ marginTop: 4 }}>
+                <Tag color="success">后端API: https://your-tunnel.com</Tag>
+                <Tag color="default">API文档: https://your-tunnel.com/docs</Tag>
+              </div>
+            </div>
           </Space>
         </div>
       </div>

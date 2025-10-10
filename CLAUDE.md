@@ -90,6 +90,19 @@ npm run build  # Build for production
 # Context API for authentication state
 ```
 
+### Testing
+```bash
+# Frontend tests (React Testing Library)
+cd frontend
+npm test  # Run tests in watch mode
+npm test -- --coverage  # Run tests with coverage report
+npm test -- --watchAll=false  # Run tests once (CI mode)
+
+# Backend testing
+# Currently uses manual testing via API documentation
+# Access http://localhost:8000/docs for interactive API testing
+```
+
 ### Docker Development (Recommended)
 ```bash
 # Using comprehensive management script (recommended)
@@ -152,11 +165,12 @@ npm run build  # Build for production
 - Search and organization features with pagination
 
 ### Environment Management (Advanced Feature)
-- Conda virtual environment creation and management
+- Conda virtual environment creation and management (non-admin users: 1 environment limit)
 - Package installation/uninstallation/upgrade in isolated environments
 - Environment sharing (public environments for non-admin users)
 - Python version selection (default: 3.11)
 - Environment usage tracking and monitoring
+- Admin-level environment oversight and control
 
 ### System Administration
 - Comprehensive system logging with advanced filtering (action, resource_type, status, date_range)
