@@ -9,6 +9,7 @@ import ProductHomePage from './pages/ProductHomePage';
 import LoginPage from './pages/LoginPage';
 import SystemManagement from './pages/SystemManagement';
 import CodeLibraryPage from './pages/CodeLibraryPage';
+import EnvironmentPage from './pages/EnvironmentPage';
 import APIKeyPage from './pages/APIKeyPage';
 import AIConfigPage from './pages/AIConfigPage';
 import 'antd/dist/reset.css';
@@ -70,6 +71,16 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <CodeLibraryPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/environments"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <EnvironmentPage />
               </Layout>
             </ProtectedRoute>
           }

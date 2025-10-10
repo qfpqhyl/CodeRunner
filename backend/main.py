@@ -1716,6 +1716,417 @@ def _format_file_size(size_bytes):
 
     return f"{size:.2f} {size_names[i]}"
 
+# Environment Management endpoints
+@app.get("/environments/{env_name}/info")
+def get_environment_info(
+    env_name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get information about a specific conda environment"""
+    try:
+        # Get Python version and environment info
+        python_cmd = f"conda run -n {env_name} python" if env_name != "base" else "python"
+
+        # Get Python version
+        version_result = subprocess.run(
+            f"{python_cmd} --version".split(),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        python_version = version_result.stdout.strip() if version_result.returncode == 0 else "Unknown"
+
+        # Get Python executable path
+        path_result = subprocess.run(
+            f"{python_cmd} -c \"import sys; print(sys.executable)\"".split(),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        python_path = path_result.stdout.strip() if path_result.returncode == 0 else "Unknown"
+
+        # Get site packages path
+        site_packages_result = subprocess.run(
+            f"{python_cmd} -c \"import site; print(site.getsitepackages()[0])\"".split(),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        site_packages_path = site_packages_result.stdout.strip() if site_packages_result.returncode == 0 else "Unknown"
+
+        # Count installed packages
+        pip_list_result = subprocess.run(
+            f"{python_cmd} -m pip list".split(),
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+
+        package_count = 0
+        if pip_list_result.returncode == 0:
+            lines = pip_list_result.stdout.split('\n')
+            for line in lines[2:]:  # Skip header lines
+                if line.strip():
+                    package_count += 1
+
+        return {
+            "name": env_name,
+            "python_version": python_version,
+            "python_path": python_path,
+            "site_packages_path": site_packages_path,
+            "package_count": package_count,
+            "is_base": env_name == "base",
+            "environment_type": "系统默认" if env_name == "base" else "虚拟环境"
+        }
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="获取环境信息超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取环境信息失败: {str(e)}")
+
+@app.get("/environments/{env_name}/packages")
+def get_environment_packages(
+    env_name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get packages installed in a specific conda environment"""
+    try:
+        # Get Python version and installed packages
+        python_cmd = f"conda run -n {env_name} python" if env_name != "base" else "python"
+
+        # Get Python version
+        version_result = subprocess.run(
+            f"{python_cmd} --version".split(),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        python_version = version_result.stdout.strip() if version_result.returncode == 0 else "Unknown"
+
+        # Get installed packages using pip list
+        pip_list_result = subprocess.run(
+            f"{python_cmd} -m pip list --format=json".split(),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if pip_list_result.returncode != 0:
+            # Fallback to pip list without json format
+            pip_list_result = subprocess.run(
+                f"{python_cmd} -m pip list".split(),
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if pip_list_result.returncode == 0:
+                # Parse the output manually
+                packages = []
+                lines = pip_list_result.stdout.split('\n')
+                for line in lines[2:]:  # Skip header lines
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            package_name = parts[0]
+                            version = parts[1]
+                            packages.append({
+                                "name": package_name,
+                                "version": version,
+                                "latest_version": None,
+                                "size": None,
+                                "location": None
+                            })
+                return packages
+
+        # Parse JSON output
+        import json
+        packages_info = json.loads(pip_list_result.stdout)
+
+        # Enhance package information
+        packages = []
+        for pkg in packages_info:
+            packages.append({
+                "name": pkg.get("name", ""),
+                "version": pkg.get("version", ""),
+                "latest_version": None,  # Could be implemented with pip list --outdated
+                "size": None,  # Size info not available in basic pip list
+                "location": None
+            })
+
+        return packages
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="获取包列表超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取包列表失败: {str(e)}")
+
+@app.post("/environments/{env_name}/packages/install")
+def install_package(
+    env_name: str,
+    package_data: dict,
+    current_user: User = Depends(get_current_user),
+    client_info: dict = Depends(get_client_info)
+):
+    """Install a package in a specific conda environment"""
+    try:
+        package_name = package_data.get("package_name", "")
+        if not package_name:
+            raise HTTPException(status_code=400, detail="请提供包名")
+
+        # Validate package name format
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_.==>=<]+$', package_name):
+            raise HTTPException(status_code=400, detail="包名格式无效")
+
+        # Determine python command
+        python_cmd = f"conda run -n {env_name} python" if env_name != "base" else "python"
+        pip_cmd = f"conda run -n {env_name} pip" if env_name != "base" else "pip"
+
+        # Install the package
+        install_result = subprocess.run(
+            f"{pip_cmd} install {package_name}".split(),
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout for installation
+        )
+
+        if install_result.returncode != 0:
+            error_msg = install_result.stderr.strip() if install_result.stderr else "安装失败"
+            raise HTTPException(status_code=500, detail=f"包安装失败: {error_msg}")
+
+        # Log the package installation
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_install",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "success": True
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"message": f"包 {package_name} 安装成功"}
+
+    except subprocess.TimeoutExpired:
+        # Log timeout
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_install",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": "timeout"
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=408, detail="包安装超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_install",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"包安装失败: {str(e)}")
+
+@app.delete("/environments/{env_name}/packages/{package_name}")
+def uninstall_package(
+    env_name: str,
+    package_name: str,
+    current_user: User = Depends(get_current_user),
+    client_info: dict = Depends(get_client_info)
+):
+    """Uninstall a package from a specific conda environment"""
+    try:
+        # Validate package name
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_.]+$', package_name):
+            raise HTTPException(status_code=400, detail="包名格式无效")
+
+        # Don't allow uninstalling critical packages
+        critical_packages = {"pip", "setuptools", "wheel", "python"}
+        if package_name.lower() in critical_packages:
+            raise HTTPException(status_code=400, detail=f"不能卸载关键包: {package_name}")
+
+        # Determine pip command
+        pip_cmd = f"conda run -n {env_name} pip" if env_name != "base" else "pip"
+
+        # Uninstall the package
+        uninstall_result = subprocess.run(
+            f"{pip_cmd} uninstall -y {package_name}".split(),
+            capture_output=True,
+            text=True,
+            timeout=120  # 2 minutes timeout for uninstallation
+        )
+
+        if uninstall_result.returncode != 0:
+            error_msg = uninstall_result.stderr.strip() if uninstall_result.stderr else "卸载失败"
+            raise HTTPException(status_code=500, detail=f"包卸载失败: {error_msg}")
+
+        # Log the package uninstallation
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_uninstall",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "success": True
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"message": f"包 {package_name} 卸载成功"}
+
+    except subprocess.TimeoutExpired:
+        # Log timeout
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_uninstall",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": "timeout"
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=408, detail="包卸载超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_uninstall",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"包卸载失败: {str(e)}")
+
+@app.put("/environments/{env_name}/packages/{package_name}/upgrade")
+def upgrade_package(
+    env_name: str,
+    package_name: str,
+    current_user: User = Depends(get_current_user),
+    client_info: dict = Depends(get_client_info)
+):
+    """Upgrade a package in a specific conda environment"""
+    try:
+        # Validate package name
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_.]+$', package_name):
+            raise HTTPException(status_code=400, detail="包名格式无效")
+
+        # Determine pip command
+        pip_cmd = f"conda run -n {env_name} pip" if env_name != "base" else "pip"
+
+        # Upgrade the package
+        upgrade_result = subprocess.run(
+            f"{pip_cmd} install --upgrade {package_name}".split(),
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes timeout for upgrade
+        )
+
+        if upgrade_result.returncode != 0:
+            error_msg = upgrade_result.stderr.strip() if upgrade_result.stderr else "升级失败"
+            raise HTTPException(status_code=500, detail=f"包升级失败: {error_msg}")
+
+        # Log the package upgrade
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_upgrade",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "success": True
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"message": f"包 {package_name} 升级成功"}
+
+    except subprocess.TimeoutExpired:
+        # Log timeout
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_upgrade",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": "timeout"
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=408, detail="包升级超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error
+        log_system_event(
+            db=next(get_db()),
+            user_id=current_user.id,
+            action="package_upgrade",
+            resource_type="environment",
+            details={
+                "environment": env_name,
+                "package_name": package_name,
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"包升级失败: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -88,4 +88,11 @@ export const getDatabaseInfo = () => api.get('/admin/database/info');
 // Conda environments endpoint
 export const getCondaEnvironments = () => api.get('/conda-environments');
 
+// Environment management endpoints
+export const getEnvironmentPackages = (envName) => api.get(`/environments/${envName}/packages`);
+export const getEnvironmentInfo = (envName) => api.get(`/environments/${envName}/info`);
+export const installPackage = (envName, packageName) => api.post(`/environments/${envName}/packages/install`, { package_name: packageName });
+export const uninstallPackage = (envName, packageName) => api.delete(`/environments/${envName}/packages/${packageName}`);
+export const upgradePackage = (envName, packageName) => api.put(`/environments/${envName}/packages/${packageName}/upgrade`);
+
 export default api;
