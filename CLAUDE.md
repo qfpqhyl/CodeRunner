@@ -8,8 +8,8 @@ CodeRunner is a remote Python code execution platform built with FastAPI (backen
 
 ## Architecture
 
-### Backend (FastAPI) - main.py
-The core FastAPI application with 2700+ lines containing all API endpoints, authentication middleware, and business logic:
+### Backend (FastAPI) - Monolithic Architecture
+The core FastAPI application follows a monolithic architecture pattern with a single large `main.py` file (2700+ lines) containing all API endpoints, middleware, and business logic. This design centralizes functionality for easier maintenance in a medium-sized application.
 
 **Core Files:**
 - **main.py**: Main FastAPI application with all API endpoints, authentication, and business logic (2700+ lines)
@@ -26,22 +26,68 @@ The core FastAPI application with 2700+ lines containing all API endpoints, auth
 - Database import/export functionality for administrators
 - Package management (install/uninstall/upgrade) in isolated environments
 
+**Backend Architecture Patterns:**
+- **Dependency Injection**: FastAPI's dependency system for database sessions and authentication
+- **Repository Pattern**: SQLAlchemy ORM with proper session management
+- **Middleware Layer**: CORS, authentication, client IP tracking, and request logging
+- **Service Layer**: Business logic embedded directly in endpoint functions
+- **Security Layer**: JWT tokens, Argon2 hashing, role-based access control
+
 ### Frontend (React + Ant Design)
-Modern React application with Chinese localization and comprehensive UI components:
+Modern React application with Chinese localization and comprehensive UI components following a component-based architecture:
 
 **Core Files:**
 - **App.js**: Main application with React Router, authentication context, and protected routes
 - **components/AuthContext.js**: Authentication state management using React Context API
 - **components/Layout.js**: Navigation and layout components with Ant Design components
+- **components/BackendConfig.js**: Backend configuration management UI
+- **components/DeploymentTutorial.js**: Deployment guide and tutorial component
 - **pages/**: Page components (HomePage, ProductHomePage, LoginPage, UserManagement, SystemManagement, CodeLibraryPage, APIKeyPage, AIConfigPage, EnvironmentPage)
 - **services/api.js**: Axios HTTP client with interceptors for authentication and error handling
 
 **Key Frontend Features:**
-- Chinese language interface (zhCN locale)
-- Protected routes with authentication checks
+- Chinese language interface (zhCN locale) with full localization
+- Protected routes with authentication checks using AuthContext
 - Real-time code execution with environment selection
 - Comprehensive admin panel for system management
 - AI configuration and code generation interface
+- Deployment tutorial and configuration management
+
+**Frontend Architecture Patterns:**
+- **SPA (Single Page Application)**: React Router for client-side routing
+- **Context API**: Global authentication state management
+- **Component Composition**: Modular React components with Ant Design
+- **Service Layer**: Axios interceptors for authentication and error handling
+- **Protected Routes**: Route guards based on authentication status
+
+### Project Structure & Key Files
+
+```
+CodeRunner/
+├── backend/                    # FastAPI backend service
+│   ├── main.py                # Core API application (2700+ lines)
+│   ├── database.py            # SQLAlchemy models + DB setup
+│   ├── models.py              # Pydantic request/response models
+│   ├── auth.py                # JWT authentication functions
+│   ├── user_levels.py         # User tier system configuration
+│   └── requirements.txt       # Python dependencies
+├── frontend/                   # React frontend application
+│   ├── public/               # Static assets and favicon
+│   ├── src/
+│   │   ├── components/       # Reusable React components
+│   │   ├── pages/           # Page-level components
+│   │   ├── services/        # API layer (Axios configuration)
+│   │   └── App.js           # Main app with routing
+│   ├── build/               # Production build output
+│   └── package.json         # Node.js dependencies and scripts
+├── data/                    # Persistent data directory (SQLite DB)
+├── docker-manager.sh        # Comprehensive Docker management (11k lines)
+├── docker-start.sh         # Simple Docker startup script
+├── docker-stop.sh          # Simple Docker shutdown script
+├── README.md               # Detailed project documentation (Chinese)
+├── DOCKER_README.md        # Docker deployment guide
+└── CLAUDE.md              # This file - AI assistant guidance
+```
 
 ### Database Schema (SQLite)
 Comprehensive database design with 7 core tables supporting multi-tenant code execution:
@@ -53,6 +99,29 @@ Comprehensive database design with 7 core tables supporting multi-tenant code ex
 - **AIConfig**: id, user_id, config_name, provider (qwen/openai/claude), model_name, api_key, base_url, is_active, created_at, updated_at
 - **UserEnvironment**: id, user_id, env_name (unique), display_name, description, python_version, conda_yaml, is_active, is_public, created_at, updated_at, last_used
 - **SystemLog**: id, user_id, action, resource_type, resource_id, details (JSON), ip_address, user_agent, status (success/error/warning), created_at
+
+### Key Development Patterns
+
+**Backend Patterns:**
+- **Single File Architecture**: All API endpoints in `main.py` - use Ctrl+F to find specific endpoints
+- **FastAPI Dependencies**: Authentication and database sessions handled via dependency injection
+- **SQLAlchemy Models**: All database models in `database.py` with proper relationships
+- **Pydantic Validation**: Request/response models in `models.py` with comprehensive type hints
+- **Error Handling**: Consistent HTTP status codes and error messages across endpoints
+- **Security**: All endpoints require authentication except `/register`, `/login`, and health endpoints
+
+**Frontend Patterns:**
+- **Context-based Auth**: `AuthContext.js` provides global authentication state
+- **Axios Interceptors**: Automatic token handling and error response processing
+- **Ant Design Components**: Consistent UI components with Chinese localization
+- **Protected Routes**: Route guards in `App.js` redirect unauthenticated users
+- **Component Organization**: Page components in `/pages`, shared components in `/components`
+
+**Database Patterns:**
+- **SQLite with Auto-initialization**: Database and admin user created on first run
+- **Audit Logging**: All user actions logged in `SystemLog` table with IP tracking
+- **User Quotas**: Daily limits tracked per user level in `CodeExecution` table
+- **Multi-tenancy**: User isolation via `user_id` foreign keys throughout schema
 
 ## Development Commands
 
@@ -79,14 +148,20 @@ python main.py  # Start backend server on http://localhost:8000
 cd frontend
 npm install  # Install dependencies
 npm start  # Start development server on http://localhost:3000
-npm test  # Run tests
+npm test  # Run tests in watch mode
 npm run build  # Build for production
+
+# Available npm scripts:
+# npm start          - Development server (React dev server)
+# npm test           - Run tests in watch mode
+# npm run build      - Production build to /build directory
+# npm run eject      - Eject from Create React App (irreversible)
 
 # Frontend Stack
 # React 18 with functional components and hooks
 # Ant Design UI component library (Chinese locale)
 # React Router for client-side routing
-# Axios for HTTP requests
+# Axios for HTTP requests with interceptors
 # Context API for authentication state
 ```
 
@@ -94,36 +169,46 @@ npm run build  # Build for production
 ```bash
 # Frontend tests (React Testing Library)
 cd frontend
-npm test  # Run tests in watch mode
+npm test  # Run tests in interactive watch mode
 npm test -- --coverage  # Run tests with coverage report
 npm test -- --watchAll=false  # Run tests once (CI mode)
+npm test -- --testNamePattern="<pattern>"  # Run specific tests
 
 # Backend testing
-# Currently uses manual testing via API documentation
+# Currently uses manual testing via FastAPI auto-generated docs
 # Access http://localhost:8000/docs for interactive API testing
+# Access http://localhost:8000/redoc for alternative API documentation
 ```
 
 ### Docker Development (Recommended)
 ```bash
 # Using comprehensive management script (recommended)
 ./docker-manager.sh start          # Start services
-./docker-manager.sh status         # Check service status
+./docker-manager.sh status         # Check service health and access URLs
 ./docker-manager.sh logs backend -f    # View real-time backend logs
 ./docker-manager.sh logs frontend -f   # View real-time frontend logs
-./docker-manager.sh exec backend   # Enter backend container
-./docker-manager.sh restart -b     # Rebuild and restart
-./docker-manager.sh stop           # Stop services
-./docker-manager.sh cleanup        # Clean all resources
+./docker-manager.sh logs all -f        # View all container logs
+./docker-manager.sh exec backend       # Enter backend container (bash shell)
+./docker-manager.sh exec frontend      # Enter frontend container (sh shell)
+./docker-manager.sh restart -b         # Rebuild and restart all services
+./docker-manager.sh restart            # Restart services without rebuilding
+./docker-manager.sh stop               # Stop services
+./docker-manager.sh cleanup            # Clean all Docker resources
+
+# Docker management commands accept both English and Chinese:
+# ./docker-manager.sh logs backend     # or: ./docker-manager.sh logs 后端
+# ./docker-manager.sh exec frontend    # or: ./docker-manager.sh exec 前端
 
 # Using simple scripts
-./docker-start.sh                  # Start services
-./docker-stop.sh                   # Stop services
+./docker-start.sh      # Start services (basic)
+./docker-stop.sh       # Stop services (basic)
 
 # Docker Architecture
-# Backend: miniconda3 with Python 3.11 in 'runner' environment
-# Frontend: Multi-stage build with Node.js builder + Nginx Alpine
+# Backend: miniconda3 with Python 3.11 in 'runner' conda environment
+# Frontend: Multi-stage build (Node.js 18 builder + Nginx Alpine production)
 # Data persistence: ./data/ directory mounted to backend container
-# Network: Custom Docker network for container communication
+# Network: Custom Docker network for secure container communication
+# Health checks: Both containers have configured health endpoints
 ```
 
 ## Key Features
@@ -289,6 +374,12 @@ Multi-stage Docker builds optimized for security and performance:
 - **Health checks**: Configured for both containers with proper intervals
 - **Data persistence**: Backend data mounted to `./data/` directory
 - **Security**: Non-root users, minimal attack surface, health monitoring
+
+### Container Registry & Deployment
+- **Alibaba Cloud Registry**: Pre-built images available at `crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:{backend|frontend}`
+- **Production Images**: Optimized multi-stage builds with security hardening
+- **Docker Compose Ready**: Reference configuration in README.md for quick deployment
+- **Management Scripts**: Comprehensive `docker-manager.sh` with English/Chinese command support
 
 ## Database Setup & Management
 

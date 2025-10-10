@@ -8,6 +8,25 @@
 
 CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构建的远程Python代码执行平台。它提供了用户认证、多层级用户权限、AI代码生成、安全的Python代码执行、代码库管理、API密钥管理和全面的系统日志记录功能。
 
+## 🖼️ 应用预览
+
+### 在线演示
+- **演示地址**: [https://code.qfpqhyl.cloudns.org/](https://code.qfpqhyl.cloudns.org/)
+- **默认账号**: admin / admin123 (请在登录后修改密码)
+
+### 应用界面截图
+
+![CodeRunner应用界面](./frontend/public/screenshot.png)
+
+**界面特色功能**:
+- 🎨 现代化中文界面，基于Ant Design设计语言
+- 💻 实时代码编辑器，支持语法高亮和自动补全
+- 📊 用户仪表板，显示执行统计和配额使用情况
+- 🤖 AI代码生成助手，支持多种AI模型
+- 📚 个人代码库管理，支持标签和分类
+- 🔧 环境管理，支持多conda环境隔离
+- 📈 系统管理面板，全面的用户和日志管理
+
 ## ✨ 主要特性
 
 ### 🔐 用户系统
@@ -103,37 +122,97 @@ CodeRunner/
 └── .gitignore                 # Git忽略文件
 ```
 
-## 🚀 快速开始
+## 🚀 快速部署
 
-### 方法1: 使用阿里云镜像（推荐）
+### 🌐 在线演示
+- **演示地址**: [https://code.qfpqhyl.cloudns.org/](https://code.qfpqhyl.cloudns.org/)
+- **体验账号**: admin / admin123 (请在登录后修改密码)
+
+### 📋 两步完成部署
+
+#### 步骤1：Docker 部署
+
+使用阿里云镜像快速部署 CodeRunner 后端服务：
 
 ```bash
-# 拉取镜像
+# 拉取后端镜像
 docker pull crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
-docker pull crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
 
-# 创建网络
-docker network create coderunner-network
-
-# 启动后端
+# 启动后端服务
 docker run -d \
   --name coderunner_backend \
-  --network coderunner-network \
   -p 8000:8000 \
   -v $(pwd)/data:/app/data \
   -e DATABASE_URL=sqlite:///./data/coderunner.db \
   -e SECRET_KEY=your-secret-key-change-this \
+  --restart unless-stopped \
   crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
-
-# 启动前端
-docker run -d \
-  --name coderunner_frontend \
-  --network coderunner-network \
-  -p 3000:80 \
-  crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
 ```
 
-### 方法2: 本地开发
+> **注意**：请务必修改 `SECRET_KEY` 为安全的随机字符串，并确保数据目录权限正确。
+
+#### 步骤2：HTTPS 隧道配置（公网访问）
+
+使用 Cloudflare Tunnel 为后端服务创建公网 HTTPS 访问地址：
+
+```bash
+# 第一步：安装 cloudflared
+mkdir -p ~/cf && cd ~/cf && \
+wget -qO cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
+sudo dpkg -i cloudflared.deb && rm cloudflared.deb
+
+# 第二步：启动隧道并获取公网地址
+cd ~/cf && \
+nohup cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 && \
+sleep 8 && \
+grep -oP 'https://[^\s]+\.trycloudflare\.com' tunnel.log || tail -20 tunnel.log
+```
+
+### 🌐 访问配置
+
+部署完成后，您可以：
+
+- **本地访问**：http://localhost:8000
+- **公网访问**：使用上述命令生成的 HTTPS 地址
+- **API 文档**：http://localhost:8000/docs 或 https://your-tunnel.com/docs
+
+### 📝 前端配置
+
+1. **克隆项目**：
+```bash
+git clone <your-repo-url>
+cd CodeRunner/frontend
+```
+
+2. **修改后端地址**：
+编辑 `src/services/api.js`，将 `baseURL` 设置为您的公网隧道地址
+
+3. **构建并部署**：
+```bash
+npm install
+npm run build
+# 将 build 目录部署到 Web 服务器
+```
+
+### 📊 基础运维
+
+```bash
+# 查看服务状态
+docker ps
+
+# 查看后端日志
+docker logs coderunner_backend -f
+
+# 查看隧道状态
+ps aux | grep cloudflared
+
+# 备份数据库
+docker exec coderunner_backend cp /app/data/coderunner.db /app/data/backup_$(date +%Y%m%d_%H%M%S).db
+```
+
+## 🚀 本地开发
+
+### 💻 开发环境搭建
 
 #### 后端开发
 ```bash
@@ -142,70 +221,29 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-python main.py
+python main.py  # 启动后端服务 http://localhost:8000
 ```
 
 #### 前端开发
 ```bash
 cd frontend
 npm install
-npm start
+npm start  # 启动前端服务 http://localhost:3000
 ```
 
-### 方法3: Docker Compose
-
-创建 `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  coderunner_backend:
-    image: crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
-    container_name: coderunner-backend
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - DATABASE_URL=sqlite:///./data/coderunner.db
-      - SECRET_KEY=your-secret-key-change-this
-    networks:
-      - coderunner-network
-    restart: unless-stopped
-
-  coderunner_frontend:
-    image: crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
-    container_name: coderunner-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - coderunner_backend
-    networks:
-      - coderunner-network
-    restart: unless-stopped
-
-networks:
-  coderunner-network:
-    driver: bridge
-```
-
-```bash
-docker-compose up -d
-```
-
-## 🌐 访问地址
-
-- **前端应用**: http://localhost:3000
-- **后端API**: http://localhost:8000
-- **API文档**: http://localhost:8000/docs
-
-## 🔑 默认账号
+### 🔑 默认账号
 
 - **用户名**: admin
 - **密码**: admin123
 
 ⚠️ **重要**: 首次登录后请立即修改默认密码
+
+### 🌐 本地访问地址
+
+- **前端应用**: http://localhost:3000
+- **后端API**: http://localhost:8000
+- **API文档**: http://localhost:8000/docs
+- **API文档(备用)**: http://localhost:8000/redoc
 
 ## 📋 系统要求
 
