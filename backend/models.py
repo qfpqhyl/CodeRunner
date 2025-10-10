@@ -181,3 +181,61 @@ class AICodeGenerateResponse(BaseModel):
     generated_code: str
     model_used: str
     tokens_used: Optional[int] = None
+
+# User Environment Models
+class UserEnvironmentCreate(BaseModel):
+    env_name: str
+    display_name: str
+    description: Optional[str] = None
+    python_version: Optional[str] = "3.11"
+    is_public: Optional[bool] = False
+    packages: Optional[list[str]] = []  # List of packages to install
+
+class UserEnvironmentUpdate(BaseModel):
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    is_public: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+class UserEnvironmentResponse(BaseModel):
+    id: int
+    user_id: int
+    env_name: str
+    display_name: str
+    description: Optional[str] = None
+    python_version: str
+    is_active: bool
+    is_public: bool
+    created_at: datetime
+    updated_at: datetime
+    last_used: Optional[datetime] = None
+    owner_name: Optional[str] = None  # Username of environment owner
+
+    class Config:
+        from_attributes = True
+
+class EnvironmentInfo(BaseModel):
+    name: str
+    python_version: str
+    python_path: str
+    site_packages_path: str
+    package_count: int
+    is_base: bool
+    environment_type: str
+    is_owner: bool
+    is_public: bool
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+
+class PackageInfo(BaseModel):
+    name: str
+    version: str
+    latest_version: Optional[str] = None
+    size: Optional[str] = None
+    location: Optional[str] = None
+
+class PackageInstallRequest(BaseModel):
+    package_name: str
+
+class PackageInstallResponse(BaseModel):
+    message: str

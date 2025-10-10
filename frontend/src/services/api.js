@@ -95,4 +95,15 @@ export const installPackage = (envName, packageName) => api.post(`/environments/
 export const uninstallPackage = (envName, packageName) => api.delete(`/environments/${envName}/packages/${packageName}`);
 export const upgradePackage = (envName, packageName) => api.put(`/environments/${envName}/packages/${packageName}/upgrade`);
 
+// User environment management endpoints
+export const getUserEnvironments = () => api.get('/user-environments');
+export const createUserEnvironment = (envData) => api.post('/user-environments', envData);
+export const getUserEnvironment = (envId) => api.get(`/user-environments/${envId}`);
+export const updateUserEnvironment = (envId, envData) => api.put(`/user-environments/${envId}`, envData);
+export const deleteUserEnvironment = (envId) => api.delete(`/user-environments/${envId}`);
+
+// Admin user environment management endpoints
+export const adminGetAllUserEnvironments = () => api.get('/admin/user-environments');
+export const adminDeleteUserEnvironment = (envId) => api.delete(`/admin/user-environments/${envId}`);
+
 export default api;

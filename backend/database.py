@@ -79,13 +79,29 @@ class AIConfig(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class UserEnvironment(Base):
+    __tablename__ = "user_environments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    env_name = Column(String, unique=True, index=True)  # Must be unique across all users
+    display_name = Column(String)  # User-friendly name for the environment
+    description = Column(Text, nullable=True)
+    python_version = Column(String, default="3.11")
+    conda_yaml = Column(Text)  # YAML configuration for environment recreation
+    is_active = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=False)  # If true, other users can use this environment
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_used = Column(DateTime, nullable=True)
+
 class SystemLog(Base):
     __tablename__ = "system_logs"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True, index=True)  # Can be null for system events
     action = Column(String, index=True)  # "login", "logout", "code_execute", "user_create", "user_update", "user_delete", "api_call", etc.
-    resource_type = Column(String, index=True)  # "user", "code_execution", "api_key", "code_library", etc.
+    resource_type = Column(String, index=True)  # "user", "code_execution", "api_key", "code_library", "user_environment", etc.
     resource_id = Column(Integer, nullable=True)  # ID of the affected resource
     details = Column(Text)  # JSON string with additional details
     ip_address = Column(String, index=True)
