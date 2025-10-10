@@ -89,7 +89,7 @@ const BackendConfig = ({ onConfigured }) => {
       await updateBackendUrl(values.backendUrl);
 
       // Test the connection after saving
-      const result = testBackendConnection(values.backendUrl);
+      const result = await testBackendConnection(values.backendUrl);
       if (result.success) {
         setConnectionStatus('success');
         if (onConfigured) {

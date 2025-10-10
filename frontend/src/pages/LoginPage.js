@@ -32,8 +32,16 @@ const LoginPage = () => {
   useEffect(() => {
     // Check if backend is already configured
     const currentUrl = getCurrentBackendUrl();
-    if (currentUrl && currentUrl !== 'http://localhost:8000' && currentUrl !== '/api') {
+    // Only consider configured if it's a valid HTTP URL that's not the default localhost
+    if (currentUrl && currentUrl.startsWith('http') && currentUrl !== 'http://localhost:8000') {
       setBackendConfigured(true);
+    } else {
+      // Reset to default if invalid or default value
+      setBackendConfigured(false);
+      // Clear invalid backend URL from localStorage
+      if (currentUrl === '/api' || !currentUrl || !currentUrl.startsWith('http')) {
+        localStorage.removeItem('backendUrl');
+      }
     }
   }, []);
 

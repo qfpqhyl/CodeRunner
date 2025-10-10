@@ -7,8 +7,8 @@ const getBackendUrl = () => {
     // Remove trailing slash if present
     return savedUrl.replace(/\/$/, '');
   }
-  // Fallback to default based on environment
-  return process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:8000';
+  // Always use localhost:8000 as default, user will configure for production
+  return 'http://localhost:8000';
 };
 
 const API_BASE_URL = getBackendUrl();
