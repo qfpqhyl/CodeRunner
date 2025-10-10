@@ -1,51 +1,51 @@
-# CodeRunner - 智能Python代码执行平台
+# CodeRunner - 远程Python代码执行平台
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org)
-[![Ant Design](https://img.shields.io/badge/Ant%20Design-5.x-red.svg)](https://ant.design)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](docker)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
 
-一个现代化的远程Python代码执行平台，集成了AI智能代码生成功能，支持用户认证、代码管理、API调用等企业级特性。
+CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构建的远程Python代码执行平台。它提供了用户认证、多层级用户权限、AI代码生成、安全的Python代码执行、代码库管理、API密钥管理和全面的系统日志记录功能。
 
-## ✨ 核心特性
+## ✨ 主要特性
 
-### 🔐 用户管理系统
-- **多级用户体系**：免费版、基础版、高级版、企业版
-- **安全认证**：JWT令牌认证，密码哈希存储
-- **权限管理**：管理员/普通用户角色分离
-- **个人资料**：用户信息管理和密码修改
+### 🔐 用户系统
+- JWT令牌认证，30分钟过期
+- Argon2密码哈希加密
+- 管理员/用户角色分离
+- 多层级用户权限系统
 
-### 🐍 智能代码执行
-- **远程执行**：安全沙箱环境执行Python代码
-- **实时反馈**：即时显示执行结果和性能指标
-- **历史记录**：完整的代码执行历史追踪
-- **资源限制**：基于用户等级的执行时长和内存限制
-- **执行配额**：每日执行次数管理
+### 👥 用户等级系统
+- **Level 1 (免费)**: 10次/日执行，20次/日API调用，30s超时，128MB内存，5个保存代码，2个API密钥
+- **Level 2 (基础)**: 50次/日执行，100次/日API调用，60s超时，256MB内存，20个保存代码，5个API密钥
+- **Level 3 (高级)**: 200次/日执行，500次/日API调用，120s超时，512MB内存，100个保存代码，10个API密钥
+- **Level 4 (企业)**: 无限执行，无限API调用，300s超时，1024MB内存，无限保存代码和API密钥
 
-### 🤖 AI智能助手
-- **多模型支持**：支持通义千问、OpenAI、Claude等主流AI模型
-- **智能生成**：根据自然语言描述生成Python代码
-- **参数调节**：可控制创造性和输出长度
-- **实时预览**：生成结果即时预览和应用
-- **个人配置**：用户自定义AI模型配置
+### 🚀 代码执行
+- 安全的临时文件执行，自动清理
+- 基于用户级别的超时和资源限制
+- 每日执行配额和API调用配额
+- 执行历史记录和内存使用跟踪
+- 所有操作的系统日志记录，包含IP跟踪
 
-### 💾 代码库管理
-- **代码保存**：个人代码片段收藏和管理
-- **分类标签**：支持自定义标签分类
-- **公开分享**：代码公开/私有权限控制
-- **快速调用**：一键加载历史代码
+### 🤖 AI集成
+- 多AI提供商支持（Qwen、OpenAI、Claude、自定义OpenAI兼容API）
+- 用户可配置的AI模型和API密钥管理
+- 可自定义参数的代码生成（temperature、max_tokens）
+- 活跃AI配置管理
 
-### 🔑 API服务
-- **密钥管理**：个人API密钥生成和管理
-- **远程调用**：支持通过API执行代码
-- **使用统计**：API调用次数和状态追踪
-- **安全控制**：API密钥权限和过期管理
+### 📚 代码库
+- 个人代码片段存储和标签管理
+- 公开/私有代码分享
+- API访问保存的代码以供外部执行
+- 搜索和组织功能
 
-### 📊 系统管理
-- **用户监控**：全面的用户行为监控
-- **系统日志**：详细的操作日志记录
-- **统计分析**：用户使用情况和系统性能分析
-- **安全管理**：登录日志和异常行为追踪
+### 🔧 系统管理
+- 全面的系统日志过滤
+- 管理员用户管理
+- 执行监控和统计
+- API密钥使用跟踪
 
 ## 🛠️ 技术栈
 
@@ -62,7 +62,6 @@
 - **Ant Design 5** - 企业级UI组件库
 - **React Router** - 单页应用路由管理
 - **Axios** - HTTP请求客户端
-- **Monaco Editor** - 专业代码编辑器（可选）
 
 ### AI集成
 - **通义千问** - 阿里云大语言模型
@@ -106,202 +105,243 @@ CodeRunner/
 
 ## 🚀 快速开始
 
-### 环境要求
-- Python 3.8+
-- Node.js 14+
-- npm 或 yarn
+### 方法1: 使用阿里云镜像（推荐）
 
-### 1. 克隆项目
 ```bash
-git clone <repository-url>
-cd CodeRunner
+# 拉取镜像
+docker pull crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
+docker pull crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
+
+# 创建网络
+docker network create coderunner-network
+
+# 启动后端
+docker run -d \
+  --name coderunner_backend \
+  --network coderunner-network \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  -e DATABASE_URL=sqlite:///./data/coderunner.db \
+  -e SECRET_KEY=your-secret-key-change-this \
+  crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
+
+# 启动前端
+docker run -d \
+  --name coderunner_frontend \
+  --network coderunner-network \
+  -p 3000:80 \
+  crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
 ```
 
-### 2. 后端启动
-```bash
-# 进入后端目录
-cd backend
+### 方法2: 本地开发
 
-# 创建虚拟环境（推荐）
+#### 后端开发
+```bash
+cd backend
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
-
-# 安装依赖
+# venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-
-# 启动后端服务
 python main.py
 ```
-后端服务将在 `http://localhost:8000` 启动
 
-### 3. 前端启动
+#### 前端开发
 ```bash
-# 新开终端，进入前端目录
 cd frontend
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm start
 ```
-前端应用将在 `http://localhost:3000` 启动
 
-### 4. 访问应用
-打开浏览器访问 `http://localhost:3000`，使用以下默认管理员账户登录：
-- **用户名**：`admin`
-- **密码**：`admin123`
+### 方法3: Docker Compose
 
-> ⚠️ **安全提醒**：首次登录后请立即修改默认管理员密码！
+创建 `docker-compose.yml`:
 
-## 📖 使用指南
+```yaml
+version: '3.8'
 
-### 新手入门
-1. **注册账户**：访问注册页面创建新用户
-2. **登录系统**：使用用户名密码登录
-3. **代码执行**：在主页面编写Python代码并执行
-4. **探索功能**：浏览各个功能模块
+services:
+  coderunner_backend:
+    image: crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
+    container_name: coderunner-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/coderunner.db
+      - SECRET_KEY=your-secret-key-change-this
+    networks:
+      - coderunner-network
+    restart: unless-stopped
 
-### AI代码生成
-1. **配置AI模型**：在"AI配置"页面添加您的AI模型API密钥
-2. **编写需求描述**：在代码编辑器中展开AI助手面板
-3. **生成代码**：输入需求描述，点击"生成代码"
-4. **应用代码**：预览生成的代码并应用到编辑器
+  coderunner_frontend:
+    image: crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:frontend
+    container_name: coderunner-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - coderunner_backend
+    networks:
+      - coderunner-network
+    restart: unless-stopped
 
-### API调用
-1. **生成API密钥**：在"API密钥"页面创建密钥
-2. **调用接口**：使用API密钥调用远程代码执行
-3. **监控使用**：查看API调用统计和历史记录
+networks:
+  coderunner-network:
+    driver: bridge
+```
 
-## 🔧 配置说明
-
-### 环境变量
 ```bash
-# JWT密钥（生产环境必须修改）
-SECRET_KEY=your-secret-key-here
-
-# 数据库连接（可选，默认使用SQLite）
-DATABASE_URL=sqlite:///./coderunner.db
-
-# 服务器配置
-HOST=0.0.0.0
-PORT=8000
+docker-compose up -d
 ```
 
-### AI模型配置
-支持的AI模型配置：
-- **通义千问**：`https://dashscope.aliyuncs.com/compatible-mode/v1`
-- **OpenAI**：`https://api.openai.com/v1`
-- **其他兼容模型**：任意OpenAI API格式的服务
+## 🌐 访问地址
 
-### 用户等级配置
-| 等级 | 每日执行次数 | 执行时长限制 | 内存限制 | 说明 |
-|------|-------------|-------------|----------|------|
-| 免费版 | 10次 | 30秒 | 128MB | 基础功能 |
-| 基础版 | 50次 | 60秒 | 256MB | 进阶用户 |
-| 高级版 | 200次 | 120秒 | 512MB | 专业用户 |
-| 企业版 | 无限制 | 300秒 | 1024MB | 企业用户 |
+- **前端应用**: http://localhost:3000
+- **后端API**: http://localhost:8000
+- **API文档**: http://localhost:8000/docs
 
-## 🔌 API文档
+## 🔑 默认账号
 
-### 认证接口
-```http
-POST /register          # 用户注册
-POST /login             # 用户登录
-GET  /users/me          # 获取当前用户信息
-PUT  /change-password   # 修改密码
+- **用户名**: admin
+- **密码**: admin123
+
+⚠️ **重要**: 首次登录后请立即修改默认密码
+
+## 📋 系统要求
+
+- Python 3.11+
+- Node.js 18+
+- Docker & Docker Compose (可选)
+- SQLite (默认数据库)
+
+## 📊 数据库模式
+
+- **User**: 用户信息表
+- **CodeExecution**: 代码执行记录表
+- **CodeLibrary**: 代码库表
+- **APIKey**: API密钥表
+- **AIConfig**: AI配置表
+- **SystemLog**: 系统日志表
+
+## 🛠️ 管理命令
+
+### Docker管理脚本
+```bash
+./docker-manager.sh start    # 启动服务
+./docker-manager.sh status   # 检查状态
+./docker-manager.sh logs backend -f  # 查看日志
+./docker-manager.sh stop     # 停止服务
 ```
+
+### 前端开发
+```bash
+npm install    # 安装依赖
+npm start      # 启动开发服务器
+npm test       # 运行测试
+npm run build  # 构建生产版本
+```
+
+## 📡 API端点
+
+### 认证
+- `POST /register` - 用户注册
+- `POST /login` - 用户登录（返回JWT令牌）
+- `GET /users/me` - 获取当前用户信息
+- `GET /users` - 列出所有用户（仅管理员）
+- `POST /change-password` - 修改密码
+- `POST /admin/users/{user_id}/change-password` - 管理员修改密码
 
 ### 代码执行
-```http
-POST /execute           # 执行Python代码
-GET  /executions        # 获取执行历史
-GET  /user-stats        # 获取用户统计
-```
+- `POST /execute` - 执行Python代码（带用户限制）
+- `GET /executions` - 获取用户执行历史
+- `GET /admin/executions` - 获取所有执行记录（仅管理员）
+- `GET /user-stats` - 获取用户统计和限制
 
 ### AI功能
-```http
-POST /ai-configs        # 创建AI配置
-GET  /ai-configs        # 获取AI配置列表
-PUT  /ai-configs/{id}   # 更新AI配置
-DELETE /ai-configs/{id} # 删除AI配置
-POST /ai/generate-code  # AI生成代码
-```
+- `POST /ai-configs` - 创建AI配置
+- `GET /ai-configs` - 获取AI配置
+- `PUT /ai-configs/{id}` - 更新AI配置
+- `DELETE /ai-configs/{id}` - 删除AI配置
+- `POST /ai/generate-code` - 使用AI生成代码
 
 ### 代码库
-```http
-POST /code-library      # 保存代码到库
-GET  /code-library      # 获取代码库列表
-PUT  /code-library/{id} # 更新代码库
-DELETE /code-library/{id} # 删除代码库
-```
+- `POST /code-library` - 保存代码到库
+- `GET /code-library` - 获取代码库（分页）
+- `GET /code-library/{id}` - 获取特定代码
+- `PUT /code-library/{id}` - 更新代码
+- `DELETE /code-library/{id}` - 删除代码
 
 ### API密钥
-```http
-POST /api-keys          # 创建API密钥
-GET  /api-keys          # 获取API密钥列表
-PUT  /api-keys/{id}/toggle # 启用/禁用密钥
-DELETE /api-keys/{id}   # 删除API密钥
-```
+- `POST /api-keys` - 创建API密钥
+- `GET /api-keys` - 获取API密钥（不包含值）
+- `PUT /api-keys/{id}/toggle` - 启用/禁用API密钥
+- `DELETE /api-keys/{id}` - 删除API密钥
 
-## 🛡️ 安全特性
+### 外部API
+- `POST /api/v1/execute` - 通过API密钥执行代码
+- `GET /api/v1/codes` - 通过API密钥获取代码库
+- `GET /api/v1/codes/{id}` - 通过API密钥获取特定代码
 
-- **认证安全**：JWT令牌认证，自动过期机制
-- **密码安全**：bcrypt哈希加密，强度验证
-- **代码安全**：沙箱执行环境，资源限制
-- **API安全**：密钥管理，调用频率限制
-- **数据安全**：敏感信息加密存储
-- **审计安全**：完整的操作日志记录
+### 系统管理（仅管理员）
+- `GET /admin/logs` - 获取系统日志（可过滤）
+- `GET /admin/logs/stats` - 获取日志统计
+- `GET /admin/logs/actions` - 获取可用日志操作
+- `GET /admin/logs/resource-types` - 获取可用资源类型
 
-## 🎯 开发路线图
+## 🔒 安全说明
 
-### 已完成功能 ✅
-- [x] 用户认证和权限管理
-- [x] Python代码远程执行
-- [x] 多级用户等级系统
-- [x] 代码库管理功能
-- [x] API密钥管理
-- [x] AI智能代码生成
-- [x] 系统日志和监控
-- [x] 响应式前端界面
+- 默认管理员用户: username="admin", password="admin123"（首次登录后修改）
+- 代码执行使用临时文件，执行后自动清理
+- JWT令牌30分钟后过期（可通过`ACCESS_TOKEN_EXPIRE_MINUTES`配置）
+- API密钥具有使用跟踪和可选过期日期
+- 所有系统操作都记录IP地址和用户代理
+- 数据库文件（coderunner.db）已从git中排除
 
-### 计划功能 🚧
-- [ ] 支持更多编程语言（JavaScript、Java等）
-- [ ] 代码分享和协作功能
-- [ ] 文件上传和管理
-- [ ] 代码性能分析
-- [ ] 容器化部署支持
-- [ ] 微服务架构重构
-- [ ] 移动端应用
+## 🌍 环境变量
 
-## 🤝 贡献指南
+- `SECRET_KEY`: JWT签名密钥（生产环境中请更改）
+- `DATABASE_URL`: SQLite数据库连接字符串（默认: sqlite:///./coderunner.db）
+- `NODE_ENV`: React环境（development/production）
 
-欢迎参与项目贡献！请遵循以下步骤：
+## 🐳 Docker配置
 
-1. **Fork** 项目到您的GitHub账户
-2. **Clone** 您的Fork到本地
-3. **创建分支**：`git checkout -b feature/amazing-feature`
-4. **提交更改**：`git commit -m 'Add amazing feature'`
-5. **推送分支**：`git push origin feature/amazing-feature`
-6. **创建Pull Request**
+项目使用多阶段Docker构建：
+- **后端**: Python 3.11 slim镜像，非root用户
+- **前端**: Node.js 18 Alpine构建器 + Nginx Alpine生产环境
+- **网络**: 用于容器通信的自定义Docker网络
+- **健康检查**: 两个容器都配置了健康检查
+- **数据持久化**: 后端数据挂载到`./data/`目录
 
-### 开发规范
-- 遵循PEP 8 Python代码规范
-- 使用ESLint和Prettier格式化前端代码
-- 编写单元测试覆盖新功能
-- 更新相关文档
+## 📝 数据库初始化
+
+首次运行时数据库自动初始化：
+1. 数据库模式创建
+2. 默认管理员用户（admin/admin123）
+3. 性能索引创建
+
+所有数据库操作都使用SQLAlchemy ORM，具有适当的会话管理和错误处理。
+
+## 🤝 贡献
+
+欢迎提交问题报告和拉取请求。在提交之前，请确保：
+
+1. 代码符合项目风格
+2. 添加适当的测试
+3. 更新相关文档
+4. 通过所有测试
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用MIT许可证。详情请见 [LICENSE](LICENSE) 文件。
 
-## 📞 支持与反馈
+## 📞 支持
 
-- **问题反馈**：[GitHub Issues](https://github.com/your-repo/issues)
-- **功能建议**：[GitHub Discussions](https://github.com/your-repo/discussions)
-- **技术支持**：support@coderunner.com
+如果您遇到任何问题或有任何建议，请：
+
+1. 查看 [常见问题](docs/FAQ.md)
+2. 搜索现有的 [问题](https://github.com/your-username/CodeRunner/issues)
+3. 创建新的问题并提供详细信息
 
 ---
 
-⭐ 如果这个项目对您有帮助，请给我们一个Star！
+**⭐ 如果这个项目对您有帮助，请给它一个星标！**
