@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Typography, Space, Alert, Spin, Row, Col, Statistic, Modal, Form, message, Collapse, Select, Slider } from 'antd';
-import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined, RobotOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, CodeOutlined, ClockCircleOutlined, CheckCircleOutlined, UserOutlined, SaveOutlined, RobotOutlined, ThunderboltOutlined, SettingOutlined, GithubOutlined } from '@ant-design/icons';
 import { executeCode, getExecutions, getUserStats, saveCodeToLibrary, generateCodeByAI, getAIConfigs, getCondaEnvironments } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
@@ -197,10 +197,22 @@ const HomePage = () => {
       <Row gutter={[24, 24]}>
         <Col span={24}>
           <Card>
-            <Title level={2}>
-              <CodeOutlined /> CodeRunner
-            </Title>
-            <Paragraph>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Title level={2} style={{ margin: 0 }}>
+                <CodeOutlined /> CodeRunner
+              </Title>
+              <Button
+                type="default"
+                icon={<GithubOutlined />}
+                href="https://github.com/qfpqhyl/CodeRunner"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="large"
+              >
+                GitHub
+              </Button>
+            </div>
+            <Paragraph style={{ marginTop: 16 }}>
               远端Python代码执行平台 - Execute Python code remotely in a secure environment
             </Paragraph>
             <Space size="large">

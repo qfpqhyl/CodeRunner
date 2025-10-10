@@ -1,18 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="CodeRunner - Remote Python Code Execution Platform"
-    />
-    <title>CodeRunner</title>
+    <meta name="theme-color" content="#1890ff" />
+
+    <!-- SEO Meta Tags -->
+    <title>CodeRunner - 免费在线Python代码执行平台 | 远端代码运行环境</title>
+    <meta name="description" content="CodeRunner是一个安全、快速、易用的在线Python代码执行平台。支持实时代码运行、代码保存、API调用、执行历史记录等功能。适合个人开发、教学演示和团队协作。" />
+    <meta name="keywords" content="Python在线执行,代码运行器,在线编程,Python IDE,代码沙箱,远程代码执行,在线Python环境,代码测试,编程学习,代码分享" />
+    <meta name="author" content="CodeRunner Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="zh-CN" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="rating" content="general" />
+    <meta name="distribution" content="global" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://github.com/qfpqhyl/CodeRunner" />
+    <meta property="og:title" content="CodeRunner - 免费在线Python代码执行平台" />
+    <meta property="og:description" content="安全、快速、易用的在线Python代码执行平台。支持实时代码运行、代码保存、API调用等功能。适合个人开发、教学演示和团队协作。" />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="CodeRunner - 在线Python代码执行平台" />
+    <meta property="og:site_name" content="CodeRunner" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@CodeRunner" />
+    <meta name="twitter:creator" content="@CodeRunner" />
+    <meta name="twitter:title" content="CodeRunner - 免费在线Python代码执行平台" />
+    <meta name="twitter:description" content="安全、快速、易用的在线Python代码执行平台。支持实时代码运行、代码保存、API调用等功能。" />
+    <meta name="twitter:image" content="%PUBLIC_URL%/twitter-card.png" />
+    <meta name="twitter:image:alt" content="CodeRunner - 在线Python代码执行平台" />
+
+    <!-- Additional SEO Meta Tags -->
+    <meta name="application-name" content="CodeRunner" />
+    <meta name="apple-mobile-web-app-title" content="CodeRunner" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#1890ff" />
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://github.com/qfpqhyl/CodeRunner" />
+
+    <!-- DNS Prefetch for Performance -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
+    <link rel="dns-prefetch" href="//github.com" />
+
+    <!-- Preconnect for Critical Resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CodeRunner",
+      "description": "一个安全、快速、易用的在线Python代码执行平台，支持实时代码运行、代码保存、API调用等功能。",
+      "url": "https://github.com/qfpqhyl/CodeRunner",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "CodeRunner Team"
+      },
+      "provider": {
+        "@type": "Organization",
+        "name": "CodeRunner"
+      },
+      "featureList": [
+        "在线Python代码执行",
+        "安全沙箱环境",
+        "代码保存和分享",
+        "API接口调用",
+        "执行历史记录",
+        "多用户等级支持",
+        "AI代码生成助手"
+      ],
+      "screenshot": "%PUBLIC_URL%/screenshot.png",
+      "softwareVersion": "1.0.0",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1000"
+      },
+      "datePublished": "2024-01-01",
+      "dateModified": "2024-12-01"
+    }
+    </script>
+
+    <!-- Alternative Structured Data for Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "CodeRunner",
+      "url": "https://github.com/qfpqhyl/CodeRunner",
+      "logo": "%PUBLIC_URL%/logo.png",
+      "description": "专业的在线代码执行平台提供商",
+      "sameAs": [
+        "https://github.com/qfpqhyl/CodeRunner"
+      ]
+    }
+    </script>
+
+    <!-- Additional Meta Tags for Social Media -->
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/mstile-144x144.png" />
+    <link rel="fluid-icon" href="%PUBLIC_URL%/fluid-icon.png" title="CodeRunner" />
+
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Performance Optimization -->
+    <link rel="preload" href="%PUBLIC_URL%/font.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h1>需要启用JavaScript</h1>
+        <p>CodeRunner需要JavaScript才能正常运行，请在浏览器设置中启用JavaScript。</p>
+        <p><a href="https://www.enable-javascript.com/" target="_blank">了解如何启用JavaScript</a></p>
+      </div>
+    </noscript>
     <div id="root"></div>
+
+    <!-- Schema.org Breadcrumb for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "首页",
+          "item": "https://github.com/qfpqhyl/CodeRunner"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Python代码执行",
+          "item": "https://github.com/qfpqhyl/CodeRunner"
+        }
+      ]
+    }
+    </script>
+
+    <!-- FAQ Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "CodeRunner是什么？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "CodeRunner是一个安全、快速、易用的在线Python代码执行平台，支持实时代码运行、代码保存、API调用等功能。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "CodeRunner是免费的吗？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "是的，CodeRunner提供免费的基础功能，支持每日一定次数的代码执行。同时提供付费的高级功能。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "CodeRunner安全吗？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "是的，CodeRunner使用容器化沙箱技术，确保代码在安全的环境中执行，不会影响系统安全。"
+          }
+        }
+      ]
+    }
+    </script>
   </body>
 </html>

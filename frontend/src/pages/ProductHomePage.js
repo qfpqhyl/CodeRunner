@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Typography, Row, Col, Space, Statistic, Alert } from 'antd';
 import { PlayCircleOutlined, CodeOutlined, ThunderboltOutlined, SafetyOutlined,
-         GlobalOutlined, ClockCircleOutlined, StarOutlined, RocketOutlined, BookOutlined } from '@ant-design/icons';
+         GlobalOutlined, ClockCircleOutlined, StarOutlined, RocketOutlined, BookOutlined, GithubOutlined } from '@ant-design/icons';
 import { useAuth } from '../components/AuthContext';
 
 const { Title, Paragraph, Text } = Typography;
@@ -91,12 +91,26 @@ const ProductHomePage = () => {
         <Row gutter={[24, 24]}>
           <Col span={24}>
             <Card>
-              <Title level={2}>
-                <CodeOutlined /> 欢迎使用 CodeRunner
-              </Title>
-              <Paragraph>
-                远端Python代码执行平台 - 开始编写和执行您的代码
-              </Paragraph>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <Title level={2} style={{ margin: 0 }}>
+                    <CodeOutlined /> 欢迎使用 CodeRunner
+                  </Title>
+                  <Paragraph style={{ marginTop: 16 }}>
+                    远端Python代码执行平台 - 开始编写和执行您的代码
+                  </Paragraph>
+                </div>
+                <Button
+                  type="default"
+                  icon={<GithubOutlined />}
+                  href="https://github.com/qfpqhyl/CodeRunner"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="large"
+                >
+                  GitHub
+                </Button>
+              </div>
               <Space size="large">
                 <Statistic
                   title="欢迎回来"
@@ -239,6 +253,30 @@ const ProductHomePage = () => {
               }}
             >
               免费开始使用
+            </Button>
+            <Button
+              type="default"
+              icon={<GithubOutlined />}
+              href="https://github.com/qfpqhyl/CodeRunner"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="large"
+              style={{
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderColor: '#1890ff',
+                color: '#1890ff',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid #1890ff',
+                height: '52px',
+                padding: '0 30px',
+                fontSize: '17px',
+                borderRadius: '26px',
+                fontWeight: '600',
+                boxShadow: '0 6px 20px rgba(24, 144, 255, 0.15)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              GitHub
             </Button>
             <Button
               size="large"
