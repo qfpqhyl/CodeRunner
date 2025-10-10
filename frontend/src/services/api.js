@@ -66,4 +66,23 @@ export const updateAIConfig = (configId, configData) => api.put(`/ai-configs/${c
 export const deleteAIConfig = (configId) => api.delete(`/ai-configs/${configId}`);
 export const generateCodeByAI = (promptData) => api.post('/ai/generate-code', promptData);
 
+// Database Import/Export endpoints (Admin only)
+export const exportDatabase = () => {
+  return api.post('/admin/database/export', {}, {
+    responseType: 'blob'
+  });
+};
+
+export const importDatabase = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/admin/database/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const getDatabaseInfo = () => api.get('/admin/database/info');
+
 export default api;

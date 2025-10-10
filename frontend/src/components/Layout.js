@@ -79,29 +79,35 @@ const Layout = ({ children }) => {
         justifyContent: 'space-between',
         background: '#fff',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        padding: '0 24px'
+        padding: '0 24px',
+        minHeight: '64px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <CodeOutlined style={{ fontSize: '24px', marginRight: '12px', color: '#1890ff' }} />
-          <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
-            CodeRunner
-          </Title>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginRight: '24px' }}>
+            <CodeOutlined style={{ fontSize: '24px', marginRight: '12px', color: '#1890ff' }} />
+            <Title level={3} style={{ margin: 0, color: '#1890ff', whiteSpace: 'nowrap' }}>
+              CodeRunner
+            </Title>
+          </div>
           {user && (
-            <Menu
-              mode="horizontal"
-              selectedKeys={[location.pathname]}
-              items={menuItems}
-              onClick={handleMenuClick}
-              style={{
-                border: 'none',
-                marginLeft: '32px',
-                minWidth: '400px'
-              }}
-            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Menu
+                mode="horizontal"
+                selectedKeys={[location.pathname]}
+                items={menuItems}
+                onClick={handleMenuClick}
+                style={{
+                  border: 'none',
+                  lineHeight: '64px',
+                  backgroundColor: 'transparent'
+                }}
+                overflowedIndicator={null}
+              />
+            </div>
           )}
         </div>
 
-        <Space>
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '16px', flexShrink: 0 }}>
           {user ? (
             <Dropdown
               menu={{
@@ -140,7 +146,7 @@ const Layout = ({ children }) => {
               </Button>
             </Dropdown>
           ) : (
-            <>
+            <Space>
               <Button
                 icon={<LoginOutlined />}
                 onClick={() => navigate('/login')}
@@ -154,9 +160,9 @@ const Layout = ({ children }) => {
               >
                 Sign Up
               </Button>
-            </>
+            </Space>
           )}
-        </Space>
+        </div>
       </Header>
 
       <Content style={{ padding: '0', background: '#f0f2f5' }}>

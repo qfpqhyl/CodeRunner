@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Typography, Space, Tag, Popconfirm, message, Modal, Form, Input, Switch, Select, Tabs, DatePicker, Row, Col, Statistic, Spin, Empty, Tooltip } from 'antd';
-import { UserOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, FileTextOutlined, BarChartOutlined, FilterOutlined, ExportOutlined, SettingOutlined } from '@ant-design/icons';
-import { getUsers, createUser, updateUser, deleteUser, getUserLevels, getSystemLogs, getLogStatistics, getLogActions, getLogResourceTypes } from '../services/api';
+import { Card, Table, Button, Typography, Space, Tag, Popconfirm, message, Modal, Form, Input, Switch, Select, Tabs, DatePicker, Row, Col, Statistic, Spin, Empty, Tooltip, Upload } from 'antd';
+import { UserOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, FileTextOutlined, BarChartOutlined, FilterOutlined, ExportOutlined, SettingOutlined, DatabaseOutlined, UploadOutlined, DownloadOutlined, InfoCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { getUsers, createUser, updateUser, deleteUser, getUserLevels, getSystemLogs, getLogStatistics, getLogActions, getLogResourceTypes, exportDatabase, importDatabase, getDatabaseInfo } from '../services/api';
 import moment from 'moment';
 import { useAuth } from '../components/AuthContext';
 
@@ -25,6 +25,13 @@ const SystemManagement = () => {
   const [logResourceTypes, setLogResourceTypes] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [filtersVisible, setFiltersVisible] = useState(false);
+
+  // Database related state
+  const [databaseInfo, setDatabaseInfo] = useState({});
+  const [databaseLoading, setDatabaseLoading] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileList, setFileList] = useState([]);
 
   // Filter state
   const [logFilters, setLogFilters] = useState({
@@ -187,6 +194,8 @@ const SystemManagement = () => {
   useEffect(() => {
     if (activeTab === 'logs') {
       loadLogs();
+    } else if (activeTab === 'database') {
+      loadDatabaseInfo();
     }
   }, [activeTab, pagination, loadLogs]);
 
@@ -233,6 +242,132 @@ const SystemManagement = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Database related functions
+  const loadDatabaseInfo = async () => {
+    setDatabaseLoading(true);
+    try {
+      const response = await getDatabaseInfo();
+      setDatabaseInfo(response.data);
+    } catch (error) {
+      message.error('获取数据库信息失败');
+    } finally {
+      setDatabaseLoading(false);
+    }
+  };
+
+  const handleExportDatabase = async () => {
+    try {
+      message.loading('正在导出数据库...', 0);
+      const response = await exportDatabase();
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Get filename from response headers or create default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `coderunner_backup_${moment().format('YYYYMMDD_HHMMSS')}.zip`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      message.destroy();
+      message.success('数据库导出成功');
+    } catch (error) {
+      message.destroy();
+      message.error('数据库导出失败: ' + (error.response?.data?.detail || '未知错误'));
+    }
+  };
+
+  const handleImportDatabase = async (file) => {
+    if (!file) {
+      message.error('请选择要导入的备份文件');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      message.loading('正在导入数据库，请稍候...', 0);
+
+      const response = await importDatabase(file);
+
+      message.destroy();
+      message.success(`数据库导入成功！已备份原数据库为: ${response.data.previous_backup || '自动备份'}`);
+
+      // Close modal and reset
+      setImportModalVisible(false);
+      setFileList([]);
+
+      // Reload database info
+      loadDatabaseInfo();
+
+      // Show detailed results
+      Modal.info({
+        title: '导入成功',
+        width: 600,
+        content: (
+          <div>
+            <p>数据库已成功导入！以下是备份文件的统计信息：</p>
+            <div style={{ marginTop: 16 }}>
+              {Object.entries(response.data.backup_stats).map(([table, count]) => (
+                <div key={table} style={{ marginBottom: 8 }}>
+                  <strong>{table}:</strong> {count} 条记录
+                </div>
+              ))}
+            </div>
+            {response.data.previous_backup && (
+              <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+                <InfoCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                原数据库已备份为: {response.data.previous_backup}
+              </div>
+            )}
+          </div>
+        )
+      });
+    } catch (error) {
+      message.destroy();
+      message.error('数据库导入失败: ' + (error.response?.data?.detail || '未知错误'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadProps = {
+    onRemove: () => {
+      setFileList([]);
+    },
+    beforeUpload: (file) => {
+      // Check file type (should be zip)
+      const isZip = file.type === 'application/zip' || file.name.endsWith('.zip');
+      if (!isZip) {
+        message.error('只能上传 ZIP 格式的备份文件！');
+        return false;
+      }
+
+      // Check file size (max 100MB)
+      const isLt100M = file.size / 1024 / 1024 < 100;
+      if (!isLt100M) {
+        message.error('备份文件大小不能超过 100MB！');
+        return false;
+      }
+
+      setFileList([file]);
+      return false; // Prevent auto upload
+    },
+    fileList,
   };
 
   const logColumns = [
@@ -718,6 +853,203 @@ const SystemManagement = () => {
                 </Card>
               </div>
             )
+          },
+          {
+            key: 'database',
+            label: (
+              <span>
+                <DatabaseOutlined />
+                数据库管理
+              </span>
+            ),
+            children: (
+              <div>
+                {/* Database Statistics Cards */}
+                {databaseInfo.database_file && (
+                  <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Col span={6}>
+                      <Card>
+                        <Statistic
+                          title="数据库大小"
+                          value={databaseInfo.database_file.file_size_human || '未知'}
+                          prefix={<DatabaseOutlined />}
+                          valueStyle={{ color: '#1890ff' }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={6}>
+                      <Card>
+                        <Statistic
+                          title="总用户数"
+                          value={databaseInfo.table_statistics?.users || 0}
+                          prefix={<UserOutlined />}
+                          valueStyle={{ color: '#52c41a' }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={6}>
+                      <Card>
+                        <Statistic
+                          title="代码执行记录"
+                          value={databaseInfo.table_statistics?.code_executions || 0}
+                          prefix={<BarChartOutlined />}
+                          valueStyle={{ color: '#fa8c16' }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={6}>
+                      <Card>
+                        <Statistic
+                          title="系统日志"
+                          value={databaseInfo.table_statistics?.system_logs || 0}
+                          prefix={<FileTextOutlined />}
+                          valueStyle={{ color: '#722ed1' }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                )}
+
+                <Card>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <Title level={2}>
+                      <DatabaseOutlined /> 数据库管理
+                    </Title>
+                    <Space>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={loadDatabaseInfo}
+                        loading={databaseLoading}
+                      >
+                        刷新信息
+                      </Button>
+                      <Button
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        onClick={handleExportDatabase}
+                      >
+                        导出数据库
+                      </Button>
+                      <Button
+                        icon={<UploadOutlined />}
+                        onClick={() => setImportModalVisible(true)}
+                      >
+                        导入数据库
+                      </Button>
+                    </Space>
+                  </div>
+
+                  {databaseLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                      <Spin size="large" />
+                      <div style={{ marginTop: 16 }}>加载数据库信息中...</div>
+                    </div>
+                  ) : databaseInfo.database_file ? (
+                    <div>
+                      <Row gutter={16} style={{ marginBottom: 24 }}>
+                        <Col span={12}>
+                          <Card title="数据库文件信息" size="small">
+                            <p><strong>文件路径:</strong> {databaseInfo.database_file.file_path}</p>
+                            <p><strong>文件大小:</strong> {databaseInfo.database_file.file_size_human}</p>
+                            <p><strong>创建时间:</strong> {databaseInfo.database_file.created_time ? moment(databaseInfo.database_file.created_time).format('YYYY-MM-DD HH:mm:ss') : '未知'}</p>
+                            <p><strong>修改时间:</strong> {databaseInfo.database_file.modified_time ? moment(databaseInfo.database_file.modified_time).format('YYYY-MM-DD HH:mm:ss') : '未知'}</p>
+                          </Card>
+                        </Col>
+                        <Col span={12}>
+                          <Card title="用户统计" size="small">
+                            <p><strong>总用户数:</strong> {databaseInfo.user_statistics?.total_users || 0}</p>
+                            <p><strong>活跃用户:</strong> {databaseInfo.user_statistics?.active_users || 0}</p>
+                            <p><strong>管理员用户:</strong> {databaseInfo.user_statistics?.admin_users || 0}</p>
+                            <p><strong>普通用户:</strong> {(databaseInfo.user_statistics?.total_users || 0) - (databaseInfo.user_statistics?.admin_users || 0)}</p>
+                          </Card>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={16} style={{ marginBottom: 24 }}>
+                        <Col span={24}>
+                          <Card title="数据表统计" size="small">
+                            <Row gutter={16}>
+                              <Col span={4}>
+                                <Statistic
+                                  title="用户表"
+                                  value={databaseInfo.table_statistics?.users || 0}
+                                  valueStyle={{ color: '#1890ff' }}
+                                />
+                              </Col>
+                              <Col span={4}>
+                                <Statistic
+                                  title="代码执行记录"
+                                  value={databaseInfo.table_statistics?.code_executions || 0}
+                                  valueStyle={{ color: '#52c41a' }}
+                                />
+                              </Col>
+                              <Col span={4}>
+                                <Statistic
+                                  title="代码库"
+                                  value={databaseInfo.table_statistics?.code_library || 0}
+                                  valueStyle={{ color: '#fa8c16' }}
+                                />
+                              </Col>
+                              <Col span={4}>
+                                <Statistic
+                                  title="API密钥"
+                                  value={databaseInfo.table_statistics?.api_keys || 0}
+                                  valueStyle={{ color: '#f5222d' }}
+                                />
+                              </Col>
+                              <Col span={4}>
+                                <Statistic
+                                  title="AI配置"
+                                  value={databaseInfo.table_statistics?.ai_configs || 0}
+                                  valueStyle={{ color: '#722ed1' }}
+                                />
+                              </Col>
+                              <Col span={4}>
+                                <Statistic
+                                  title="系统日志"
+                                  value={databaseInfo.table_statistics?.system_logs || 0}
+                                  valueStyle={{ color: '#13c2c2' }}
+                                />
+                              </Col>
+                            </Row>
+                          </Card>
+                        </Col>
+                      </Row>
+
+                      {databaseInfo.recent_activity && (
+                        <Row gutter={16}>
+                          <Col span={12}>
+                            <Card title="最近活动" size="small">
+                              <p><strong>最后执行:</strong> {databaseInfo.recent_activity.last_execution ? moment(databaseInfo.recent_activity.last_execution).format('YYYY-MM-DD HH:mm:ss') : '无记录'}</p>
+                              <p><strong>最后日志:</strong> {databaseInfo.recent_activity.last_log ? moment(databaseInfo.recent_activity.last_log).format('YYYY-MM-DD HH:mm:ss') : '无记录'}</p>
+                            </Card>
+                          </Col>
+                          <Col span={12}>
+                            <Card title="操作说明" size="small">
+                              <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                                <p><strong>导出数据库:</strong> 将当前完整数据库导出为ZIP压缩包，包含数据文件和说明文档。</p>
+                                <p><strong>导入数据库:</strong> 从备份文件恢复数据库，导入前会自动备份当前数据。</p>
+                                <p style={{ color: '#f5222d' }}><strong>注意:</strong> 导入操作会覆盖现有数据，请谨慎操作！</p>
+                              </div>
+                            </Card>
+                          </Col>
+                        </Row>
+                      )}
+                    </div>
+                  ) : (
+                    <Empty
+                      description="无法获取数据库信息"
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                  )}
+                </Card>
+              </div>
+            )
           }
         ]}
       />
@@ -817,6 +1149,47 @@ const SystemManagement = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 数据库导入模态框 */}
+      <Modal
+        title="导入数据库"
+        open={importModalVisible}
+        onCancel={() => setImportModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <Upload.Dragger {...uploadProps}>
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+            <p className="ant-upload-hint">
+              支持单个 .zip 文件上传。文件大小不能超过 100MB。
+              <br />
+              请确保上传的是从本系统导出的数据库备份文件。
+            </p>
+          </Upload.Dragger>
+          <div style={{ marginTop: 16 }}>
+            <Space>
+              <Button
+                type="primary"
+                onClick={() => handleImportDatabase(fileList[0])}
+                disabled={fileList.length === 0 || uploading}
+                loading={uploading}
+              >
+                {uploading ? '导入中...' : '确认导入'}
+              </Button>
+              <Button onClick={() => {
+                setImportModalVisible(false);
+                setFileList([]);
+              }}>
+                取消
+              </Button>
+            </Space>
+          </div>
+        </div>
       </Modal>
     </div>
   );
