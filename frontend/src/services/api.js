@@ -1,10 +1,25 @@
 import axios from 'axios';
 
-// Use relative URL in production, localhost in development
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:8000';
+// Get dynamic backend URL from localStorage or use default
+const getBackendUrl = () => {
+  const savedUrl = localStorage.getItem('backendUrl');
+  if (savedUrl) {
+    // Remove trailing slash if present
+    return savedUrl.replace(/\/$/, '');
+  }
+  // Fallback to default based on environment
+  return process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:8000';
+};
 
+const API_BASE_URL = getBackendUrl();
+
+// Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000, // 10 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Add token to requests
@@ -15,6 +30,50 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED') {
+      error.message = '请求超时，请检查后端服务是否正常运行';
+    } else if (error.code === 'ERR_NETWORK') {
+      error.message = '无法连接到后端服务，请检查后端地址配置';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Function to update backend URL
+export const updateBackendUrl = (newUrl) => {
+  localStorage.setItem('backendUrl', newUrl);
+  // Update axios instance baseURL
+  api.defaults.baseURL = newUrl.replace(/\/$/, '');
+};
+
+// Function to test backend connection
+export const testBackendConnection = async (url) => {
+  try {
+    const testUrl = url.replace(/\/$/, '');
+    await axios.get(`${testUrl}/`, { timeout: 5000 });
+    return { success: true, message: '连接成功' };
+  } catch (error) {
+    let message = '连接失败';
+    if (error.code === 'ECONNABORTED') {
+      message = '连接超时';
+    } else if (error.code === 'ERR_NETWORK') {
+      message = '网络错误，无法访问';
+    } else if (error.response?.status === 404) {
+      message = '后端服务不存在，请检查地址是否正确';
+    }
+    return { success: false, message };
+  }
+};
+
+// Function to get current backend URL
+export const getCurrentBackendUrl = () => {
+  return api.defaults.baseURL;
+};
 
 // Auth endpoints
 export const register = (userData) => api.post('/register', userData);

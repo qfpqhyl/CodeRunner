@@ -175,7 +175,7 @@ const Layout = ({ children }) => {
       </Content>
 
       <Footer style={{ textAlign: 'center', background: '#fff', borderTop: '1px solid #f0f0f0' }}>
-        CodeRunner ©2024 - Remote Python Code Execution Platform
+        CodeRunner ©2025 - Remote Python Code Execution Platform
       </Footer>
 
       {/* Password Change Modal */}
