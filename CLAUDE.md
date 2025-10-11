@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CodeRunner is a remote Python code execution platform built with FastAPI (backend) and React + Ant Design (frontend). It features user authentication, multi-tier user levels, AI-powered code generation, secure Python code execution with limits based on user permissions, code library management, API key management, and comprehensive system logging.
+CodeRunner is a remote Python code execution platform built with FastAPI (backend) and React + Ant Design (frontend). It features user authentication, multi-tier user levels, AI-powered code generation, secure Python code execution, code library management, API key management, and comprehensive system logging.
 
 ## Architecture
 

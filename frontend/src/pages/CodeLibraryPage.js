@@ -15,7 +15,8 @@ import {
   updateCodeInLibrary,
   saveCodeToLibrary,
   getUserStats,
-  getCondaEnvironments
+  getCondaEnvironments,
+  getCurrentBackendUrl
 } from '../services/api';
 import { useAuth } from '../components/AuthContext';
 
@@ -174,7 +175,8 @@ const CodeLibraryPage = () => {
   };
 
   const generateCurlCommand = (codeId) => {
-    return `curl -X POST "http://localhost:8000/api/v1/execute?api_key=${apiKey}" \\
+    const baseUrl = getCurrentBackendUrl();
+    return `curl -X POST "${baseUrl}/api/v1/execute?api_key=${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "code_id": ${codeId},
@@ -183,11 +185,13 @@ const CodeLibraryPage = () => {
   };
 
   const generateGetCodesCurl = () => {
-    return `curl "http://localhost:8000/api/v1/codes?api_key=${apiKey}&limit=10"`;
+    const baseUrl = getCurrentBackendUrl();
+    return `curl "${baseUrl}/api/v1/codes?api_key=${apiKey}&limit=10"`;
   };
 
   const generateGetCodeCurl = (codeId) => {
-    return `curl "http://localhost:8000/api/v1/codes/${codeId}?api_key=${apiKey}"`;
+    const baseUrl = getCurrentBackendUrl();
+    return `curl "${baseUrl}/api/v1/codes/${codeId}?api_key=${apiKey}"`;
   };
 
   const handleCopyCurlToClipboard = (curlCommand) => {
@@ -766,7 +770,7 @@ const CodeLibraryPage = () => {
                           <li>每次API调用都会消耗你的每日调用额度</li>
                           <li>请将API密钥替换为你自己的密钥</li>
                           <li>curl命令中的参数可以根据需要调整</li>
-                          <li>API基础URL：http://localhost:8000/api/v1</li>
+                          <li>API基础URL：{getCurrentBackendUrl()}/api/v1</li>
                         </ul>
                       }
                       type="warning"
