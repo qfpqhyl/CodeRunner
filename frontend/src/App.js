@@ -12,6 +12,11 @@ import CodeLibraryPage from './pages/CodeLibraryPage';
 import EnvironmentPage from './pages/EnvironmentPage';
 import APIKeyPage from './pages/APIKeyPage';
 import AIConfigPage from './pages/AIConfigPage';
+import ProfilePage from './pages/ProfilePage';
+import CommunityPage from './pages/CommunityPage';
+import CreatePostPage from './pages/CreatePostPage';
+import PostDetailPage from './pages/PostDetailPage';
+import FollowListPage from './pages/FollowListPage';
 import 'antd/dist/reset.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -101,6 +106,56 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <AIConfigPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/:username"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/community"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommunityPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/community/create"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CreatePostPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/community/post/:postId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <PostDetailPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/:username/:type"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <FollowListPage />
               </Layout>
             </ProtectedRoute>
           }

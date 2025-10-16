@@ -12,8 +12,8 @@ import secrets
 import string
 import json
 import uuid
-from database import get_db, init_db, User, CodeExecution, CodeLibrary, APIKey, SystemLog, AIConfig, UserEnvironment
-from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin, APIKeyCreate, APIKeyResponse, APIKeyInfo, CodeExecuteByAPIRequest, CodeExecuteByAPIResponse, AIConfigCreate, AIConfigUpdate, AIConfigResponse, AICodeGenerateRequest, AICodeGenerateResponse, UserEnvironmentCreate, UserEnvironmentUpdate, UserEnvironmentResponse, EnvironmentInfo, PackageInfo, PackageInstallRequest, PackageInstallResponse
+from database import get_db, init_db, User, CodeExecution, CodeLibrary, APIKey, SystemLog, AIConfig, UserEnvironment, Post, PostLike, PostFavorite, Comment, CommentLike, PostCodeShare, Follow
+from models import UserCreate, UserResponse, UserLogin, Token, CodeExecutionRequest, CodeExecutionResponse, CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, PasswordChange, PasswordChangeByAdmin, APIKeyCreate, APIKeyResponse, APIKeyInfo, CodeExecuteByAPIRequest, CodeExecuteByAPIResponse, AIConfigCreate, AIConfigUpdate, AIConfigResponse, AICodeGenerateRequest, AICodeGenerateResponse, UserEnvironmentCreate, UserEnvironmentUpdate, UserEnvironmentResponse, EnvironmentInfo, PackageInfo, PackageInstallRequest, PackageInstallResponse, UserProfileUpdate, UserProfileResponse, SystemLogResponse, UserLogQuery, PostCreate, PostUpdate, PostResponse, CommentCreate, CommentUpdate, CommentResponse, PostQuery, CommentQuery, FollowCreate, FollowResponse, UserStatsResponse, CodeLibrarySaveRequest, CodeLibrarySaveResponse
 from auth import authenticate_user, create_access_token, get_password_hash, get_current_user, get_current_admin_user, get_api_key_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count, can_user_make_api_call, get_daily_api_call_count, USER_LEVELS
 
@@ -2703,6 +2703,1604 @@ def upgrade_package(
             status="error"
         )
         raise HTTPException(status_code=500, detail=f"包升级失败: {str(e)}")
+
+# User Profile endpoints
+@app.get("/profile", response_model=UserProfileResponse)
+def get_user_profile(current_user: User = Depends(get_current_user)):
+    """Get current user's profile information"""
+    return current_user
+
+@app.put("/profile", response_model=UserProfileResponse)
+def update_user_profile(
+    profile_update: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Update current user's profile information"""
+    # Update fields
+    update_data = profile_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if hasattr(current_user, field):
+            setattr(current_user, field, value)
+
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+
+    # Log profile update
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="profile_update",
+        resource_type="user_profile",
+        resource_id=current_user.id,
+        details=update_data,
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    return current_user
+
+@app.post("/profile/upload-avatar")
+def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Upload user avatar image"""
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="只能上传图片文件")
+
+    # Check file size (max 5MB)
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+
+    if file_size > 5 * 1024 * 1024:  # 5MB limit
+        raise HTTPException(status_code=400, detail="图片文件大小不能超过5MB")
+
+    try:
+        import os
+        import uuid
+
+        # Create avatars directory if it doesn't exist
+        avatars_dir = "data/avatars"
+        os.makedirs(avatars_dir, exist_ok=True)
+
+        # Generate unique filename
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join(avatars_dir, unique_filename)
+
+        # Save file directly without processing
+        with open(file_path, "wb") as buffer:
+            content = file.file.read()
+            buffer.write(content)
+
+        # Update user avatar URL
+        avatar_url = f"/api/avatars/{unique_filename}"
+        current_user.avatar_url = avatar_url
+        current_user.updated_at = datetime.utcnow()
+        db.commit()
+
+        # Log avatar upload
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="avatar_upload",
+            resource_type="user_profile",
+            resource_id=current_user.id,
+            details={
+                "avatar_url": avatar_url,
+                "file_size": file_size,
+                "original_filename": file.filename
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"avatar_url": avatar_url, "message": "头像上传成功"}
+
+    except Exception as e:
+        # Log failed upload
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="avatar_upload",
+            resource_type="user_profile",
+            resource_id=current_user.id,
+            details={
+                "error": str(e),
+                "original_filename": file.filename
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"头像上传失败: {str(e)}")
+
+@app.get("/api/avatars/{filename}")
+def get_avatar(filename: str):
+    """Serve avatar images"""
+    from fastapi.responses import FileResponse
+    import os
+
+    file_path = os.path.join("data/avatars", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="头像文件未找到")
+
+    return FileResponse(file_path, media_type="image/jpeg")
+
+@app.delete("/profile/avatar")
+def delete_avatar(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Delete user avatar"""
+    if not current_user.avatar_url:
+        raise HTTPException(status_code=400, detail="当前没有头像")
+
+    try:
+        import os
+
+        # Extract filename from URL
+        filename = current_user.avatar_url.split('/')[-1]
+        file_path = os.path.join("data/avatars", filename)
+
+        # Delete file if exists
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        # Update user avatar URL
+        current_user.avatar_url = None
+        current_user.updated_at = datetime.utcnow()
+        db.commit()
+
+        # Log avatar deletion
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="avatar_delete",
+            resource_type="user_profile",
+            resource_id=current_user.id,
+            details={"deleted_filename": filename},
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"message": "头像删除成功"}
+
+    except Exception as e:
+        # Log failed deletion
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="avatar_delete",
+            resource_type="user_profile",
+            resource_id=current_user.id,
+            details={"error": str(e)},
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"头像删除失败: {str(e)}")
+
+# User Activity Logs endpoints
+@app.get("/profile/logs", response_model=dict)
+def get_user_activity_logs(
+    query: UserLogQuery = Depends(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's activity logs with filtering and pagination"""
+    # Build query
+    db_query = db.query(SystemLog).filter(SystemLog.user_id == current_user.id)
+
+    # Apply filters
+    if query.action:
+        db_query = db_query.filter(SystemLog.action == query.action)
+    if query.resource_type:
+        db_query = db_query.filter(SystemLog.resource_type == query.resource_type)
+    if query.status:
+        db_query = db_query.filter(SystemLog.status == query.status)
+    if query.start_date:
+        try:
+            start_dt = query.start_date
+            if isinstance(start_dt, str):
+                start_dt = datetime.fromisoformat(start_dt.replace('Z', '+00:00'))
+            db_query = db_query.filter(SystemLog.created_at >= start_dt)
+        except ValueError:
+            pass
+    if query.end_date:
+        try:
+            end_dt = query.end_date
+            if isinstance(end_dt, str):
+                end_dt = datetime.fromisoformat(end_dt.replace('Z', '+00:00'))
+            db_query = db_query.filter(SystemLog.created_at <= end_dt)
+        except ValueError:
+            pass
+
+    # Count total logs
+    total_count = db_query.count()
+
+    # Calculate pagination
+    page = max(1, query.page)
+    page_size = min(100, max(1, query.page_size))  # Limit page size to 100
+    offset = (page - 1) * page_size
+
+    # Get paginated logs
+    logs = db_query.order_by(SystemLog.created_at.desc()).offset(offset).limit(page_size).all()
+
+    # Convert logs to response format
+    log_responses = []
+    for log in logs:
+        log_dict = {
+            "id": log.id,
+            "action": log.action,
+            "resource_type": log.resource_type,
+            "resource_id": log.resource_id,
+            "details": json.loads(log.details) if log.details else None,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "status": log.status,
+            "created_at": log.created_at.isoformat()
+        }
+        log_responses.append(SystemLogResponse(**log_dict))
+
+    return {
+        "logs": log_responses,
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size
+        }
+    }
+
+@app.get("/profile/logs/actions")
+def get_user_log_actions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get available log actions for the current user"""
+    actions = db.query(SystemLog.action).filter(
+        SystemLog.user_id == current_user.id
+    ).distinct().all()
+    return [action[0] for action in actions if action[0]]
+
+@app.get("/profile/logs/resource-types")
+def get_user_log_resource_types(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get available resource types for the current user"""
+    resource_types = db.query(SystemLog.resource_type).filter(
+        SystemLog.user_id == current_user.id
+    ).distinct().all()
+    return [rt[0] for rt in resource_types if rt[0]]
+
+@app.get("/profile/stats")
+def get_user_profile_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current user's profile statistics"""
+    # Get basic user stats
+    level_config = get_user_level_config(current_user.user_level)
+
+    # Execution stats
+    total_executions = db.query(CodeExecution).filter(CodeExecution.user_id == current_user.id).count()
+    successful_executions = db.query(CodeExecution).filter(
+        CodeExecution.user_id == current_user.id,
+        CodeExecution.status == "success"
+    ).count()
+
+    # Library stats
+    library_count = db.query(CodeLibrary).filter(CodeLibrary.user_id == current_user.id).count()
+    public_library_count = db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == current_user.id,
+        CodeLibrary.is_public == True
+    ).count()
+
+    # API key stats
+    api_key_count = db.query(APIKey).filter(APIKey.user_id == current_user.id).count()
+    active_api_key_count = db.query(APIKey).filter(
+        APIKey.user_id == current_user.id,
+        APIKey.is_active == True
+    ).count()
+
+    # AI config stats
+    ai_config_count = db.query(AIConfig).filter(AIConfig.user_id == current_user.id).count()
+
+    # Environment stats
+    environment_count = db.query(UserEnvironment).filter(
+        UserEnvironment.user_id == current_user.id,
+        UserEnvironment.is_active == True
+    ).count()
+
+    # Recent activity (last 7 days)
+    from datetime import timedelta
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+
+    recent_executions = db.query(CodeExecution).filter(
+        CodeExecution.user_id == current_user.id,
+        CodeExecution.created_at >= seven_days_ago
+    ).count()
+
+    recent_logins = db.query(SystemLog).filter(
+        SystemLog.user_id == current_user.id,
+        SystemLog.action == "user_login",
+        SystemLog.created_at >= seven_days_ago
+    ).count()
+
+    return {
+        "user_info": {
+            "username": current_user.username,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+            "user_level": current_user.user_level,
+            "is_admin": current_user.is_admin,
+            "avatar_url": current_user.avatar_url,
+            "bio": current_user.bio,
+            "location": current_user.location,
+            "website": current_user.website,
+            "github_username": current_user.github_username,
+            "company": current_user.company,
+            "created_at": current_user.created_at.isoformat(),
+            "updated_at": current_user.updated_at.isoformat()
+        },
+        "usage_stats": {
+            "total_executions": total_executions,
+            "successful_executions": successful_executions,
+            "success_rate": round(successful_executions / total_executions * 100, 2) if total_executions > 0 else 0,
+            "library_count": library_count,
+            "public_library_count": public_library_count,
+            "api_key_count": api_key_count,
+            "active_api_key_count": active_api_key_count,
+            "ai_config_count": ai_config_count,
+            "environment_count": environment_count
+        },
+        "recent_activity": {
+            "executions_last_7_days": recent_executions,
+            "logins_last_7_days": recent_logins
+        },
+        "user_level_config": level_config
+    }
+
+# Community API endpoints
+@app.post("/community/posts", response_model=PostResponse)
+def create_post(
+    post_data: PostCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Create a new community post"""
+    try:
+        # Create the post
+        post = Post(
+            user_id=current_user.id,
+            title=post_data.title,
+            content=post_data.content,
+            summary=post_data.summary,
+            tags=post_data.tags,
+            is_public=post_data.is_public
+        )
+
+        db.add(post)
+        db.commit()
+        db.refresh(post)
+
+        # Handle code library sharing
+        if post_data.shared_code_ids:
+            for code_id in post_data.shared_code_ids:
+                # Verify the code belongs to the user or is public
+                code = db.query(CodeLibrary).filter(
+                    CodeLibrary.id == code_id
+                ).first()
+
+                if code and (code.user_id == current_user.id or code.is_public):
+                    post_code_share = PostCodeShare(
+                        post_id=post.id,
+                        code_library_id=code_id,
+                        share_order=len(post.shared_codes) if hasattr(post, 'shared_codes') else 0
+                    )
+                    db.add(post_code_share)
+
+                    # Mark code as shared via post and make it publicly accessible
+                    if code.user_id == current_user.id:
+                        code.is_shared_via_post = True
+                        code.shared_post_id = post.id
+                        # Make the code public if the post is public
+                        if post_data.is_public:
+                            code.is_public = True
+
+        db.commit()
+
+        # Log post creation
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="post_create",
+            resource_type="post",
+            resource_id=post.id,
+            details={
+                "title": post_data.title,
+                "tags": post_data.tags,
+                "is_public": post_data.is_public,
+                "shared_code_count": len(post_data.shared_code_ids)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        # Prepare response with author info
+        response_dict = {
+            "id": post.id,
+            "user_id": post.user_id,
+            "title": post.title,
+            "content": post.content,
+            "summary": post.summary,
+            "tags": post.tags,
+            "view_count": post.view_count,
+            "like_count": post.like_count,
+            "comment_count": post.comment_count,
+            "favorite_count": post.favorite_count,
+            "is_pinned": post.is_pinned,
+            "is_public": post.is_public,
+            "created_at": post.created_at,
+            "updated_at": post.updated_at,
+            "author_username": current_user.username,
+            "author_avatar": current_user.avatar_url,
+            "author_full_name": current_user.full_name,
+            "is_liked_by_current_user": False,
+            "is_favorited_by_current_user": False,
+            "shared_codes": []
+        }
+
+        return PostResponse(**response_dict)
+
+    except Exception as e:
+        # Log failed post creation
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="post_create",
+            resource_type="post",
+            details={
+                "title": post_data.title,
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"帖子创建失败: {str(e)}")
+
+@app.get("/community/posts", response_model=dict)
+def get_posts(
+    query: PostQuery = Depends(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get community posts with filtering and pagination"""
+    try:
+        # Build base query
+        db_query = db.query(Post).filter(Post.is_public == True)
+
+        # Apply filters
+        if query.author_id:
+            db_query = db_query.filter(Post.user_id == query.author_id)
+
+        if query.tag:
+            db_query = db_query.filter(Post.tags.like(f"%{query.tag}%"))
+
+        if query.search:
+            search_term = f"%{query.search}%"
+            db_query = db_query.filter(
+                (Post.title.like(search_term)) |
+                (Post.content.like(search_term)) |
+                (Post.summary.like(search_term))
+            )
+
+        if query.is_pinned is not None:
+            db_query = db_query.filter(Post.is_pinned == query.is_pinned)
+
+        # Apply sorting
+        if query.sort_by == "latest":
+            db_query = db_query.order_by(Post.is_pinned.desc(), Post.created_at.desc())
+        elif query.sort_by == "popular":
+            db_query = db_query.order_by(Post.is_pinned.desc(), Post.view_count.desc())
+        elif query.sort_by == "most_liked":
+            db_query = db_query.order_by(Post.is_pinned.desc(), Post.like_count.desc())
+        elif query.sort_by == "most_commented":
+            db_query = db_query.order_by(Post.is_pinned.desc(), Post.comment_count.desc())
+        else:
+            db_query = db_query.order_by(Post.is_pinned.desc(), Post.created_at.desc())
+
+        # Count total posts
+        total_count = db_query.count()
+
+        # Apply pagination
+        page = max(1, query.page)
+        page_size = min(50, max(1, query.page_size))
+        offset = (page - 1) * page_size
+
+        posts = db_query.offset(offset).limit(page_size).all()
+
+        # Get user's interaction status for each post
+        post_ids = [post.id for post in posts]
+        user_likes = {}
+        user_favorites = {}
+
+        if post_ids:
+            # Get user's likes
+            user_like_records = db.query(PostLike).filter(
+                PostLike.user_id == current_user.id,
+                PostLike.post_id.in_(post_ids)
+            ).all()
+            user_likes = {like.post_id: True for like in user_like_records}
+
+            # Get user's favorites
+            user_favorite_records = db.query(PostFavorite).filter(
+                PostFavorite.user_id == current_user.id,
+                PostFavorite.post_id.in_(post_ids)
+            ).all()
+            user_favorites = {favorite.post_id: True for favorite in user_favorite_records}
+
+        # Prepare response
+        post_responses = []
+        for post in posts:
+            # Get author info
+            author = db.query(User).filter(User.id == post.user_id).first()
+
+            # Get shared codes
+            shared_codes = []
+            post_code_shares = db.query(PostCodeShare).filter(PostCodeShare.post_id == post.id).all()
+            for share in post_code_shares:
+                code = db.query(CodeLibrary).filter(CodeLibrary.id == share.code_library_id).first()
+                if code:
+                    shared_codes.append({
+                        "id": code.id,
+                        "title": code.title,
+                        "description": code.description,
+                        "language": code.language,
+                        "tags": code.tags,
+                        "author_id": code.user_id,
+                        "author_username": author.username if author else "unknown",
+                        "is_public": code.is_public
+                    })
+
+            response_dict = {
+                "id": post.id,
+                "user_id": post.user_id,
+                "title": post.title,
+                "content": post.content,
+                "summary": post.summary,
+                "tags": post.tags,
+                "view_count": post.view_count,
+                "like_count": post.like_count,
+                "comment_count": post.comment_count,
+                "favorite_count": post.favorite_count,
+                "is_pinned": post.is_pinned,
+                "is_public": post.is_public,
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "author_username": author.username if author else "unknown",
+                "author_avatar": author.avatar_url if author else None,
+                "author_full_name": author.full_name if author else None,
+                "is_liked_by_current_user": user_likes.get(post.id, False),
+                "is_favorited_by_current_user": user_favorites.get(post.id, False),
+                "shared_codes": shared_codes
+            }
+            post_responses.append(PostResponse(**response_dict))
+
+        return {
+            "posts": post_responses,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": (total_count + page_size - 1) // page_size
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取帖子列表失败: {str(e)}")
+
+@app.get("/community/posts/{post_id}", response_model=PostResponse)
+def get_post(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific post by ID"""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="帖子未找到")
+
+    # Check if post is public or belongs to current user
+    if not post.is_public and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此帖子")
+
+    # Increment view count
+    post.view_count += 1
+    db.commit()
+
+    # Get author info
+    author = db.query(User).filter(User.id == post.user_id).first()
+
+    # Get user's interaction status
+    is_liked = db.query(PostLike).filter(
+        PostLike.user_id == current_user.id,
+        PostLike.post_id == post_id
+    ).first() is not None
+
+    is_favorited = db.query(PostFavorite).filter(
+        PostFavorite.user_id == current_user.id,
+        PostFavorite.post_id == post_id
+    ).first() is not None
+
+    # Get shared codes
+    shared_codes = []
+    post_code_shares = db.query(PostCodeShare).filter(PostCodeShare.post_id == post_id).all()
+    for share in post_code_shares:
+        code = db.query(CodeLibrary).filter(CodeLibrary.id == share.code_library_id).first()
+        if code and (code.user_id == current_user.id or code.is_public):
+            shared_codes.append({
+                "id": code.id,
+                "title": code.title,
+                "description": code.description,
+                "language": code.language,
+                "tags": code.tags,
+                "author_id": code.user_id,
+                "author_username": author.username if author else "unknown",
+                "is_public": code.is_public
+            })
+
+    response_dict = {
+        "id": post.id,
+        "user_id": post.user_id,
+        "title": post.title,
+        "content": post.content,
+        "summary": post.summary,
+        "tags": post.tags,
+        "view_count": post.view_count,
+        "like_count": post.like_count,
+        "comment_count": post.comment_count,
+        "favorite_count": post.favorite_count,
+        "is_pinned": post.is_pinned,
+        "is_public": post.is_public,
+        "created_at": post.created_at,
+        "updated_at": post.updated_at,
+        "author_username": author.username if author else "unknown",
+        "author_avatar": author.avatar_url if author else None,
+        "author_full_name": author.full_name if author else None,
+        "is_liked_by_current_user": is_liked,
+        "is_favorited_by_current_user": is_favorited,
+        "shared_codes": shared_codes
+    }
+
+    return PostResponse(**response_dict)
+
+@app.post("/community/posts/{post_id}/like")
+def like_post(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Like or unlike a post"""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="帖子未找到")
+
+    # Check if post is public or belongs to current user
+    if not post.is_public and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此帖子")
+
+    # Check if already liked
+    existing_like = db.query(PostLike).filter(
+        PostLike.user_id == current_user.id,
+        PostLike.post_id == post_id
+    ).first()
+
+    if existing_like:
+        # Unlike
+        db.delete(existing_like)
+        post.like_count = max(0, post.like_count - 1)
+        message = "取消点赞"
+        is_liked = False
+    else:
+        # Like
+        like = PostLike(user_id=current_user.id, post_id=post_id)
+        db.add(like)
+        post.like_count += 1
+        message = "点赞成功"
+        is_liked = True
+
+    db.commit()
+
+    # Log the interaction
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="post_like" if is_liked else "post_unlike",
+        resource_type="post",
+        resource_id=post_id,
+        details={"post_title": post.title},
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    return {"message": message, "is_liked": is_liked, "like_count": post.like_count}
+
+@app.post("/community/posts/{post_id}/favorite")
+def favorite_post(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Favorite or unfavorite a post"""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="帖子未找到")
+
+    # Check if post is public or belongs to current user
+    if not post.is_public and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此帖子")
+
+    # Check if already favorited
+    existing_favorite = db.query(PostFavorite).filter(
+        PostFavorite.user_id == current_user.id,
+        PostFavorite.post_id == post_id
+    ).first()
+
+    if existing_favorite:
+        # Unfavorite
+        db.delete(existing_favorite)
+        post.favorite_count = max(0, post.favorite_count - 1)
+        message = "取消收藏"
+        is_favorited = False
+    else:
+        # Favorite
+        favorite = PostFavorite(user_id=current_user.id, post_id=post_id)
+        db.add(favorite)
+        post.favorite_count += 1
+        message = "收藏成功"
+        is_favorited = True
+
+    db.commit()
+
+    # Log the interaction
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="post_favorite" if is_favorited else "post_unfavorite",
+        resource_type="post",
+        resource_id=post_id,
+        details={"post_title": post.title},
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    return {"message": message, "is_favorited": is_favorited, "favorite_count": post.favorite_count}
+
+@app.post("/community/posts/{post_id}/comments", response_model=CommentResponse)
+def create_comment(
+    post_id: int,
+    comment_data: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Create a comment on a post"""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="帖子未找到")
+
+    # Check if post is public or belongs to current user
+    if not post.is_public and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此帖子")
+
+    # If replying to a comment, check if parent comment exists
+    if comment_data.parent_id:
+        parent_comment = db.query(Comment).filter(Comment.id == comment_data.parent_id).first()
+        if not parent_comment or parent_comment.post_id != post_id:
+            raise HTTPException(status_code=404, detail="父评论未找到")
+
+    # Create comment
+    comment = Comment(
+        user_id=current_user.id,
+        post_id=post_id,
+        parent_id=comment_data.parent_id,
+        content=comment_data.content
+    )
+
+    db.add(comment)
+
+    # Update post comment count
+    post.comment_count += 1
+
+    db.commit()
+    db.refresh(comment)
+
+    # Log comment creation
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="comment_create",
+        resource_type="comment",
+        resource_id=comment.id,
+        details={
+            "post_id": post_id,
+            "parent_id": comment_data.parent_id,
+            "content_length": len(comment_data.content)
+        },
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    # Prepare response
+    response_dict = {
+        "id": comment.id,
+        "user_id": comment.user_id,
+        "post_id": comment.post_id,
+        "parent_id": comment.parent_id,
+        "content": comment.content,
+        "like_count": comment.like_count,
+        "is_deleted": comment.is_deleted,
+        "created_at": comment.created_at,
+        "updated_at": comment.updated_at,
+        "author_username": current_user.username,
+        "author_avatar": current_user.avatar_url,
+        "author_full_name": current_user.full_name,
+        "is_liked_by_current_user": False,
+        "replies": []
+    }
+
+    return CommentResponse(**response_dict)
+
+@app.get("/community/posts/{post_id}/comments", response_model=dict)
+def get_comments(
+    post_id: int,
+    query: CommentQuery = Depends(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get comments for a post"""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="帖子未找到")
+
+    # Check if post is public or belongs to current user
+    if not post.is_public and post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权访问此帖子")
+
+    try:
+        # Get top-level comments (no parent)
+        db_query = db.query(Comment).filter(
+            Comment.post_id == post_id,
+            Comment.parent_id.is_(None),
+            Comment.is_deleted == False
+        )
+
+        # Apply sorting
+        if query.sort_by == "latest":
+            db_query = db_query.order_by(Comment.created_at.desc())
+        elif query.sort_by == "most_liked":
+            db_query = db_query.order_by(Comment.like_count.desc())
+        else:
+            db_query = db_query.order_by(Comment.created_at.desc())
+
+        # Apply pagination
+        page = max(1, query.page)
+        page_size = min(50, max(1, query.page_size))
+        offset = (page - 1) * page_size
+
+        comments = db_query.offset(offset).limit(page_size).all()
+
+        # Get user's like status for each comment
+        comment_ids = [comment.id for comment in comments]
+        user_likes = {}
+
+        if comment_ids:
+            user_like_records = db.query(CommentLike).filter(
+                CommentLike.user_id == current_user.id,
+                CommentLike.comment_id.in_(comment_ids)
+            ).all()
+            user_likes = {like.comment_id: True for like in user_like_records}
+
+        # Prepare response
+        comment_responses = []
+        for comment in comments:
+            # Get author info
+            author = db.query(User).filter(User.id == comment.user_id).first()
+
+            # Get replies
+            replies = []
+            reply_records = db.query(Comment).filter(
+                Comment.parent_id == comment.id,
+                Comment.is_deleted == False
+            ).order_by(Comment.created_at.asc()).all()
+
+            for reply in reply_records:
+                reply_author = db.query(User).filter(User.id == reply.user_id).first()
+                reply_response_dict = {
+                    "id": reply.id,
+                    "user_id": reply.user_id,
+                    "post_id": reply.post_id,
+                    "parent_id": reply.parent_id,
+                    "content": reply.content,
+                    "like_count": reply.like_count,
+                    "is_deleted": reply.is_deleted,
+                    "created_at": reply.created_at,
+                    "updated_at": reply.updated_at,
+                    "author_username": reply_author.username if reply_author else "unknown",
+                    "author_avatar": reply_author.avatar_url if reply_author else None,
+                    "author_full_name": reply_author.full_name if reply_author else None,
+                    "is_liked_by_current_user": False,
+                    "replies": []
+                }
+                replies.append(CommentResponse(**reply_response_dict))
+
+            response_dict = {
+                "id": comment.id,
+                "user_id": comment.user_id,
+                "post_id": comment.post_id,
+                "parent_id": comment.parent_id,
+                "content": comment.content,
+                "like_count": comment.like_count,
+                "is_deleted": comment.is_deleted,
+                "created_at": comment.created_at,
+                "updated_at": comment.updated_at,
+                "author_username": author.username if author else "unknown",
+                "author_avatar": author.avatar_url if author else None,
+                "author_full_name": author.full_name if author else None,
+                "is_liked_by_current_user": user_likes.get(comment.id, False),
+                "replies": replies
+            }
+            comment_responses.append(CommentResponse(**response_dict))
+
+        return {
+            "comments": comment_responses,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_count": db_query.count(),
+                "total_pages": (db_query.count() + page_size - 1) // page_size
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取评论失败: {str(e)}")
+
+@app.post("/community/comments/{comment_id}/like")
+def like_comment(
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Like or unlike a comment"""
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="评论未找到")
+
+    # Check if user can access the post
+    post = db.query(Post).filter(Post.id == comment.post_id).first()
+    if not post or (not post.is_public and post.user_id != current_user.id):
+        raise HTTPException(status_code=403, detail="无权访问此评论")
+
+    # Check if already liked
+    existing_like = db.query(CommentLike).filter(
+        CommentLike.user_id == current_user.id,
+        CommentLike.comment_id == comment_id
+    ).first()
+
+    if existing_like:
+        # Unlike
+        db.delete(existing_like)
+        comment.like_count = max(0, comment.like_count - 1)
+        message = "取消点赞"
+        is_liked = False
+    else:
+        # Like
+        like = CommentLike(user_id=current_user.id, comment_id=comment_id)
+        db.add(like)
+        comment.like_count += 1
+        message = "点赞成功"
+        is_liked = True
+
+    db.commit()
+
+    # Log the interaction
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="comment_like" if is_liked else "comment_unlike",
+        resource_type="comment",
+        resource_id=comment_id,
+        details={"post_id": comment.post_id},
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    return {"message": message, "is_liked": is_liked, "like_count": comment.like_count}
+
+@app.post("/community/follow/{user_id}", response_model=FollowResponse)
+def follow_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Follow or unfollow a user"""
+    # Cannot follow yourself
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能关注自己")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Check if already following
+    existing_follow = db.query(Follow).filter(
+        Follow.follower_id == current_user.id,
+        Follow.following_id == user_id
+    ).first()
+
+    if existing_follow:
+        # Unfollow
+        db.delete(existing_follow)
+        message = "取消关注"
+        is_following = False
+    else:
+        # Follow
+        follow = Follow(follower_id=current_user.id, following_id=user_id)
+        db.add(follow)
+        message = "关注成功"
+        is_following = True
+
+    db.commit()
+
+    # Log the interaction
+    log_system_event(
+        db=db,
+        user_id=current_user.id,
+        action="user_follow" if is_following else "user_unfollow",
+        resource_type="user",
+        resource_id=user_id,
+        details={"target_username": target_user.username},
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        status="success"
+    )
+
+    response_dict = {
+        "id": 0,  # Placeholder
+        "follower_id": current_user.id,
+        "following_id": user_id,
+        "created_at": datetime.utcnow(),
+        "following_username": target_user.username,
+        "following_avatar": target_user.avatar_url,
+        "following_full_name": target_user.full_name,
+        "is_following": is_following
+    }
+
+    return FollowResponse(**response_dict)
+
+# Enhanced User Profile Stats
+@app.get("/profile/enhanced-stats", response_model=UserStatsResponse)
+def get_user_enhanced_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get enhanced user profile statistics for profile page"""
+
+    # Basic counts
+    code_library_count = db.query(CodeLibrary).filter(CodeLibrary.user_id == current_user.id).count()
+    posts_count = db.query(Post).filter(Post.user_id == current_user.id).count()
+    followers_count = db.query(Follow).filter(Follow.following_id == current_user.id).count()
+    following_count = db.query(Follow).filter(Follow.follower_id == current_user.id).count()
+
+    # Calculate total stats from user's posts
+    user_posts = db.query(Post).filter(Post.user_id == current_user.id).all()
+    total_likes = sum(post.like_count for post in user_posts)
+    total_favorites = sum(post.favorite_count for post in user_posts)
+    total_views = sum(post.view_count for post in user_posts)
+
+    # Recent posts (last 5)
+    recent_posts = db.query(Post).filter(Post.user_id == current_user.id).order_by(Post.created_at.desc()).limit(5).all()
+
+    # Recent codes (last 5)
+    recent_codes = db.query(CodeLibrary).filter(CodeLibrary.user_id == current_user.id).order_by(CodeLibrary.created_at.desc()).limit(5).all()
+
+    # Favorite posts (last 5)
+    favorite_post_ids = db.query(PostFavorite.post_id).filter(PostFavorite.user_id == current_user.id).all()
+    favorite_posts = db.query(Post).filter(Post.id.in_([fp[0] for fp in favorite_post_ids])).order_by(Post.created_at.desc()).limit(5).all()
+
+    # Liked posts (last 5)
+    liked_post_ids = db.query(PostLike.post_id).filter(PostLike.user_id == current_user.id).all()
+    liked_posts = db.query(Post).filter(Post.id.in_([lp[0] for lp in liked_post_ids])).order_by(Post.created_at.desc()).limit(5).all()
+
+    return UserStatsResponse(
+        code_library_count=code_library_count,
+        posts_count=posts_count,
+        followers_count=followers_count,
+        following_count=following_count,
+        total_likes=total_likes,
+        total_favorites=total_favorites,
+        total_views=total_views,
+        recent_posts=[PostResponse.model_validate(post) for post in recent_posts],
+        recent_codes=[CodeLibraryResponse.model_validate(code) for code in recent_codes],
+        favorite_posts=[PostResponse.model_validate(post) for post in favorite_posts],
+        liked_posts=[PostResponse.model_validate(post) for post in liked_posts]
+    )
+
+# Code Library Save/Copy functionality
+@app.post("/code-library/save", response_model=CodeLibrarySaveResponse)
+def save_code_to_library(
+    save_request: CodeLibrarySaveRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save a shared code to user's own library"""
+
+    # Get the source code
+    source_code = db.query(CodeLibrary).filter(CodeLibrary.id == save_request.source_code_id).first()
+    if not source_code:
+        raise HTTPException(status_code=404, detail="Source code not found")
+
+    # Check if the code is accessible (either public or shared via post)
+    if not source_code.is_public and not source_code.is_shared_via_post:
+        raise HTTPException(status_code=403, detail="This code is not accessible for saving")
+
+    # Create a copy in user's library
+    new_code = CodeLibrary(
+        user_id=current_user.id,
+        title=save_request.title or f"[Copy] {source_code.title}",
+        description=save_request.description or source_code.description,
+        code=source_code.code,
+        language=source_code.language,
+        is_public=False,  # Saved codes are private by default
+        tags=source_code.tags,
+        conda_env=save_request.conda_env
+    )
+
+    db.add(new_code)
+    db.commit()
+    db.refresh(new_code)
+
+    return CodeLibrarySaveResponse(
+        id=new_code.id,
+        title=new_code.title,
+        message="Code saved to your library successfully"
+    )
+
+# Get available environments for code saving
+@app.get("/environments/available")
+def get_available_environments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all available environments for the current user"""
+
+    # User's own environments
+    user_envs = db.query(UserEnvironment).filter(
+        UserEnvironment.user_id == current_user.id,
+        UserEnvironment.is_active == True
+    ).all()
+
+    # Public environments from other users
+    public_envs = db.query(UserEnvironment).filter(
+        UserEnvironment.is_public == True,
+        UserEnvironment.is_active == True,
+        UserEnvironment.user_id != current_user.id
+    ).all()
+
+    # Always include base environment
+    environments = [{"name": "base", "display_name": "Base Environment", "is_default": True}]
+
+    # Add user environments
+    for env in user_envs:
+        environments.append({
+            "name": env.env_name,
+            "display_name": env.display_name,
+            "is_default": False
+        })
+
+    # Add public environments
+    for env in public_envs:
+        environments.append({
+            "name": env.env_name,
+            "display_name": f"{env.display_name} (by {env.user_id})",
+            "is_default": False
+        })
+
+    return {"environments": environments}
+
+# Delete Post API
+@app.delete("/community/posts/{post_id}")
+def delete_post(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    client_info: dict = Depends(get_client_info)
+):
+    """Delete a community post and hide related shared codes"""
+    try:
+        # Get the post
+        post = db.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="帖子不存在")
+
+        # Check if user is the author or admin
+        if post.user_id != current_user.id and not current_user.is_admin:
+            raise HTTPException(status_code=403, detail="无权删除此帖子")
+
+        # Get all shared codes for this post
+        shared_codes = db.query(CodeLibrary).join(PostCodeShare).filter(
+            PostCodeShare.post_id == post_id
+        ).all()
+
+        # Hide codes that were made public through this post
+        for code in shared_codes:
+            if code.is_shared_via_post and code.shared_post_id == post_id:
+                code.is_public = False
+                code.is_shared_via_post = False
+                code.shared_post_id = None
+
+        # Delete post code shares
+        db.query(PostCodeShare).filter(PostCodeShare.post_id == post_id).delete()
+
+        # Delete post comments
+        db.query(Comment).filter(Comment.post_id == post_id).delete()
+
+        # Delete post likes and favorites
+        db.query(PostLike).filter(PostLike.post_id == post_id).delete()
+        db.query(PostFavorite).filter(PostFavorite.post_id == post_id).delete()
+
+        # Delete the post
+        db.delete(post)
+        db.commit()
+
+        # Log post deletion
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="post_delete",
+            resource_type="post",
+            resource_id=post_id,
+            details={
+                "title": post.title,
+                "hidden_codes_count": len(shared_codes)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="success"
+        )
+
+        return {"message": "帖子删除成功，相关代码已设为私密"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log failed post deletion
+        log_system_event(
+            db=db,
+            user_id=current_user.id,
+            action="post_delete",
+            resource_type="post",
+            resource_id=post_id,
+            details={
+                "error": str(e)
+            },
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=f"帖子删除失败: {str(e)}")
+
+# Follow/Followers List endpoints
+@app.get("/users/{user_id}/followers", response_model=dict)
+def get_user_followers(
+    user_id: int,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Get user's followers list"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Get followers with user info
+    followers_query = db.query(
+        User.id,
+        User.username,
+        User.full_name,
+        User.avatar_url,
+        Follow.created_at
+    ).join(
+        Follow, User.id == Follow.follower_id
+    ).filter(
+        Follow.following_id == user_id
+    ).order_by(
+        Follow.created_at.desc()
+    )
+
+    total_count = followers_query.count()
+    followers = followers_query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "followers": [
+            {
+                "id": follower.id,
+                "username": follower.username,
+                "full_name": follower.full_name,
+                "avatar_url": follower.avatar_url,
+                "followed_at": follower.created_at
+            }
+            for follower in followers
+        ],
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size
+        }
+    }
+
+@app.get("/users/{user_id}/following", response_model=dict)
+def get_user_following(
+    user_id: int,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Get user's following list"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Get following with user info
+    following_query = db.query(
+        User.id,
+        User.username,
+        User.full_name,
+        User.avatar_url,
+        Follow.created_at
+    ).join(
+        Follow, User.id == Follow.following_id
+    ).filter(
+        Follow.follower_id == user_id
+    ).order_by(
+        Follow.created_at.desc()
+    )
+
+    total_count = following_query.count()
+    following = following_query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "following": [
+            {
+                "id": following_user.id,
+                "username": following_user.username,
+                "full_name": following_user.full_name,
+                "avatar_url": following_user.avatar_url,
+                "followed_at": following_user.created_at
+            }
+            for following_user in following
+        ],
+        "pagination": {
+            "current_page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size
+        }
+    }
+
+@app.get("/users/{user_id}/follow-status", response_model=dict)
+def get_follow_status(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get follow status between current user and target user"""
+    if user_id == current_user.id:
+        return {"is_following": False, "is_self": True}
+
+    is_following = db.query(Follow).filter(
+        Follow.follower_id == current_user.id,
+        Follow.following_id == user_id
+    ).first() is not None
+
+    return {"is_following": is_following, "is_self": False}
+
+@app.get("/users/by-username/{username}")
+def get_user_by_username(
+    username: str,
+    db: Session = Depends(get_db)
+):
+    """Get user by username"""
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "full_name": user.full_name,
+        "avatar_url": user.avatar_url,
+        "bio": user.bio,
+        "location": user.location,
+        "company": user.company,
+        "github_username": user.github_username,
+        "website": user.website,
+        "created_at": user.created_at
+    }
+
+@app.get("/users/{user_id}/posts", response_model=dict)
+def get_user_posts(
+    user_id: int,
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Get public posts by a specific user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Count total posts
+    total_count = db.query(Post).filter(
+        Post.user_id == user_id,
+        Post.is_public == True
+    ).count()
+
+    # Get paginated posts
+    posts = db.query(Post).filter(
+        Post.user_id == user_id,
+        Post.is_public == True
+    ).order_by(Post.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "posts": [
+            {
+                "id": post.id,
+                "title": post.title,
+                "content": post.content,
+                "summary": post.content[:200] + "..." if len(post.content) > 200 else post.content,
+                "code_snippet": post.code_snippet,
+                "language": post.language,
+                "tags": post.tags,
+                "view_count": post.view_count,
+                "like_count": post.like_count,
+                "comment_count": len(db.query(Comment).filter(Comment.post_id == post.id).all()),
+                "created_at": post.created_at,
+                "updated_at": post.updated_at
+            }
+            for post in posts
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size
+        }
+    }
+
+@app.get("/users/{user_id}/code-library", response_model=dict)
+def get_user_code_library(
+    user_id: int,
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Get public code library entries by a specific user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Count total public code entries
+    total_count = db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == user_id,
+        CodeLibrary.is_public == True
+    ).count()
+
+    # Get paginated code library entries
+    codes = db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == user_id,
+        CodeLibrary.is_public == True
+    ).order_by(CodeLibrary.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "codes": [
+            {
+                "id": code.id,
+                "title": code.title,
+                "description": code.description,
+                "language": code.language,
+                "tags": code.tags,
+                "conda_env": code.conda_env,
+                "created_at": code.created_at,
+                "updated_at": code.updated_at
+            }
+            for code in codes
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size
+        }
+    }
+
+@app.get("/users/{user_id}/stats", response_model=dict)
+def get_user_public_stats(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get public statistics for a user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户未找到")
+
+    # Count posts
+    posts_count = db.query(Post).filter(
+        Post.user_id == user_id,
+        Post.is_public == True
+    ).count()
+
+    # Count public code library entries
+    code_library_count = db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == user_id,
+        CodeLibrary.is_public == True
+    ).count()
+
+    # Count followers and following
+    followers_count = db.query(Follow).filter(Follow.following_id == user_id).count()
+    following_count = db.query(Follow).filter(Follow.follower_id == user_id).count()
+
+    # Get recent posts
+    recent_posts = db.query(Post).filter(
+        Post.user_id == user_id,
+        Post.is_public == True
+    ).order_by(Post.created_at.desc()).limit(5).all()
+
+    # Get recent code library entries
+    recent_codes = db.query(CodeLibrary).filter(
+        CodeLibrary.user_id == user_id,
+        CodeLibrary.is_public == True
+    ).order_by(CodeLibrary.created_at.desc()).limit(5).all()
+
+    return {
+        "posts_count": posts_count,
+        "code_library_count": code_library_count,
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "recent_posts": [
+            {
+                "id": post.id,
+                "title": post.title,
+                "summary": post.content[:200] + "..." if len(post.content) > 200 else post.content,
+                "like_count": post.like_count,
+                "comment_count": len(db.query(Comment).filter(Comment.post_id == post.id).all()),
+                "view_count": post.view_count,
+                "created_at": post.created_at
+            }
+            for post in recent_posts
+        ],
+        "recent_codes": [
+            {
+                "id": code.id,
+                "title": code.title,
+                "description": code.description,
+                "language": code.language,
+                "conda_env": code.conda_env,
+                "created_at": code.created_at
+            }
+            for code in recent_codes
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn

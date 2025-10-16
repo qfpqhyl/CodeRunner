@@ -40,9 +40,10 @@ Modern React application with Chinese localization and comprehensive UI componen
 - **App.js**: Main application with React Router, authentication context, and protected routes
 - **components/AuthContext.js**: Authentication state management using React Context API
 - **components/Layout.js**: Navigation and layout components with Ant Design components
+- **components/Comment.js**: Reusable comment component for posts
 - **components/BackendConfig.js**: Backend configuration management UI
 - **components/DeploymentTutorial.js**: Deployment guide and tutorial component
-- **pages/**: Page components (HomePage, ProductHomePage, LoginPage, UserManagement, SystemManagement, CodeLibraryPage, APIKeyPage, AIConfigPage, EnvironmentPage)
+- **pages/**: Page components (HomePage, ProductHomePage, LoginPage, UserManagement, SystemManagement, CodeLibraryPage, APIKeyPage, AIConfigPage, EnvironmentPage, CommunityPage, CreatePostPage, PostDetailPage, ProfilePage, FollowListPage)
 - **services/api.js**: Axios HTTP client with interceptors for authentication and error handling
 
 **Key Frontend Features:**
@@ -52,6 +53,10 @@ Modern React application with Chinese localization and comprehensive UI componen
 - Comprehensive admin panel for system management
 - AI configuration and code generation interface
 - Deployment tutorial and configuration management
+- Community features with posts, comments, likes, and follows
+- User profiles with avatars and bios
+- Social interactions (follow users, like/favorite posts, comment on posts)
+- Code sharing between posts and code library
 
 **Frontend Architecture Patterns:**
 - **SPA (Single Page Application)**: React Router for client-side routing
@@ -90,14 +95,21 @@ CodeRunner/
 ```
 
 ### Database Schema (SQLite)
-Comprehensive database design with 7 core tables supporting multi-tenant code execution:
+Comprehensive database design with 12 core tables supporting multi-tenant code execution and social features:
 
-- **User**: id, username, email, hashed_password, full_name, is_active, is_admin, user_level (1-4), created_at
+- **User**: id, username, email, hashed_password, full_name, is_active, is_admin, user_level (1-4), avatar_url, bio, created_at
 - **CodeExecution**: id, user_id, code, result, status (success/error/timeout), execution_time (ms), memory_usage (MB), created_at, is_api_call, code_library_id, conda_env
 - **CodeLibrary**: id, user_id, title, description, code, language (python), is_public, tags, conda_env, created_at, updated_at
 - **APIKey**: id, user_id, key_name, key_value (sk- prefix), is_active, last_used, usage_count, created_at, expires_at
 - **AIConfig**: id, user_id, config_name, provider (qwen/openai/claude), model_name, api_key, base_url, is_active, created_at, updated_at
 - **UserEnvironment**: id, user_id, env_name (unique), display_name, description, python_version, conda_yaml, is_active, is_public, created_at, updated_at, last_used
+- **Post**: id, user_id, title, content, code_snippet, language, tags, is_public, view_count, like_count, created_at, updated_at
+- **PostLike**: id, user_id, post_id, created_at
+- **PostFavorite**: id, user_id, post_id, created_at
+- **Comment**: id, user_id, post_id, content, created_at, updated_at
+- **CommentLike**: id, user_id, comment_id, created_at
+- **PostCodeShare**: id, post_id, code_library_id, created_at
+- **Follow**: id, follower_id, following_id, created_at
 - **SystemLog**: id, user_id, action, resource_type, resource_id, details (JSON), ip_address, user_agent, status (success/error/warning), created_at
 
 ### Key Development Patterns
@@ -135,12 +147,16 @@ pip install -r requirements.txt  # Install dependencies
 python main.py  # Start backend server on http://localhost:8000
 
 # Backend Dependencies
-# FastAPI web framework with Uvicorn ASGI server
-# SQLAlchemy ORM with SQLite database
-# Pydantic for data validation
-# JWT authentication with python-jose
-# Argon2 password hashing
-# OpenAI SDK for AI integration
+# FastAPI 0.104.1 web framework with Uvicorn 0.24.0 ASGI server
+# SQLAlchemy 2.0.23 ORM with SQLite database
+# Pydantic 2.5.0 for data validation
+# JWT authentication with python-jose[cryptography] 3.3.0
+# Argon2-cffi 23.1.0 password hashing
+# OpenAI 2.2.0 SDK for AI integration
+# python-multipart for file uploads
+# aiofiles for async file operations
+# requests for HTTP client operations
+# python-dotenv for environment variable management
 ```
 
 ### Frontend Development
@@ -159,10 +175,11 @@ npm run build  # Build for production
 
 # Frontend Stack
 # React 18 with functional components and hooks
-# Ant Design UI component library (Chinese locale)
-# React Router for client-side routing
-# Axios for HTTP requests with interceptors
+# Ant Design 5.12.8 UI component library (Chinese locale)
+# React Router 6.6.1 for client-side routing
+# Axios 1.6.2 for HTTP requests with interceptors
 # Context API for authentication state
+# dayjs and moment for date/time handling
 ```
 
 ### Testing
@@ -178,6 +195,7 @@ npm test -- --testNamePattern="<pattern>"  # Run specific tests
 # Currently uses manual testing via FastAPI auto-generated docs
 # Access http://localhost:8000/docs for interactive API testing
 # Access http://localhost:8000/redoc for alternative API documentation
+# Note: Backend lacks automated unit/integration tests - consider adding pytest suite
 ```
 
 ### Docker Development (Recommended)
@@ -265,6 +283,16 @@ npm test -- --testNamePattern="<pattern>"  # Run specific tests
 - System resource monitoring and health checks
 - API key usage tracking and management
 
+### Community & Social Features
+- User posts with code snippets, markdown content, and tagging
+- Social interactions: like posts, favorite posts, comment on posts
+- User following system and follower management
+- User profiles with avatar uploads, bio, and statistics
+- Post commenting with nested comments and like functionality
+- Code sharing between community posts and personal code library
+- Public/private post visibility controls
+- User activity feeds and engagement metrics
+
 ## API Endpoints (Comprehensive REST API)
 
 ### Authentication & User Management
@@ -331,6 +359,27 @@ npm test -- --testNamePattern="<pattern>"  # Run specific tests
 - `GET /admin/database/info` - Get database information and statistics
 - `GET /admin/user-environments` - Get all user environments (admin view)
 - `DELETE /admin/user-environments/{env_id}` - Admin delete any environment
+
+### Community & Social Features
+- `GET /posts` - Get public posts with pagination and filtering
+- `POST /posts` - Create new post (authenticated users)
+- `GET /posts/{id}` - Get specific post details
+- `PUT /posts/{id}` - Update post (author only)
+- `DELETE /posts/{id}` - Delete post (author/admin only)
+- `POST /posts/{post_id}/like` - Like/unlike a post
+- `POST /posts/{post_id}/favorite` - Favorite/unfavorite a post
+- `GET /posts/{post_id}/comments` - Get comments for a post
+- `POST /posts/{post_id}/comments` - Add comment to a post
+- `PUT /comments/{comment_id}` - Update comment (author only)
+- `DELETE /comments/{comment_id}` - Delete comment (author/admin only)
+- `POST /comments/{comment_id}/like` - Like/unlike a comment
+- `POST /users/{username}/follow` - Follow/unfollow a user
+- `GET /users/{username}/profile` - Get user profile and stats
+- `PUT /users/profile` - Update current user profile (bio, avatar_url)
+- `GET /users/{username}/posts` - Get user's posts
+- `GET /users/{username}/followers` - Get user's followers
+- `GET /users/{username}/following` - Get users that user follows
+- `POST /posts/{post_id}/share-to-library` - Share post code to personal library
 
 ### System Information
 - `GET /user-levels` - Get all user level configurations
@@ -414,3 +463,35 @@ The database auto-initializes on first run with:
 - **Database**: Proper indexing and query optimization
 - **Caching**: Consider Redis for session storage in production
 - **Monitoring**: Health checks and logging for all services
+
+## Development Notes & Best Practices
+
+### Code Navigation Tips
+- **Backend**: All API endpoints are in `main.py` - use Ctrl+F to find specific endpoints
+- **Database Models**: All SQLAlchemy models are defined in `database.py`
+- **Frontend Components**: Page components are in `/pages`, shared components in `/components`
+- **API Layer**: HTTP requests are centralized in `frontend/src/services/api.js`
+
+### Common Development Tasks
+- **Adding New API Endpoints**: Add to `main.py`, create corresponding Pydantic models in `models.py`
+- **Frontend Route Changes**: Update `App.js` routing and create page component in `/pages`
+- **Database Schema Changes**: Modify models in `database.py` (manual migrations currently)
+- **New UI Components**: Add to appropriate `/components` or `/pages` directory using Ant Design
+
+### Testing Strategy
+- **Frontend**: React Testing Library setup available, needs expanded test coverage
+- **Backend**: Consider adding pytest with test database for comprehensive API testing
+- **Integration**: Test critical user flows like code execution, AI generation, and authentication
+
+### Production Considerations
+- **Missing Features**: No automated backend tests, no CI/CD pipeline, no database migrations
+- **Security**: Default admin password should be changed immediately in production
+- **Scaling**: Current monolithic architecture suitable for medium-sized applications
+
+### Community Features Development Notes
+- **Content Rendering**: Posts support markdown content with code snippet embedding
+- **Avatar Management**: User avatars stored as file uploads with URL references
+- **Privacy Controls**: Posts can be public or private with visibility restrictions
+- **Content Moderation**: Admins can moderate posts and comments via deletion endpoints
+- **Engagement Metrics**: View counts, like counts, and follower statistics tracked
+- **Code Integration**: Posts can be shared to personal code library with one click

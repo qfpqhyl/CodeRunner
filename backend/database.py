@@ -23,6 +23,15 @@ class User(Base):
     user_level = Column(Integer, default=1)  # 1: Free, 2: Basic, 3: Premium, 4: Enterprise
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Profile fields
+    avatar_url = Column(String, nullable=True)  # Profile avatar URL
+    bio = Column(Text, nullable=True)  # Personal biography
+    location = Column(String, nullable=True)  # User location
+    website = Column(String, nullable=True)  # Personal website
+    github_username = Column(String, nullable=True)  # GitHub username
+    company = Column(String, nullable=True)  # Company/organization
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class CodeExecution(Base):
     __tablename__ = "code_executions"
 
@@ -49,6 +58,8 @@ class CodeLibrary(Base):
     is_public = Column(Boolean, default=False)
     tags = Column(String)  # Comma-separated tags
     conda_env = Column(String, default="base")  # Conda environment name
+    is_shared_via_post = Column(Boolean, default=False)  # Track if this code is shared via a post
+    shared_post_id = Column(Integer, nullable=True)  # Reference to the post that shares this code
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -108,6 +119,99 @@ class SystemLog(Base):
     user_agent = Column(Text)
     status = Column(String, index=True)  # "success", "error", "warning"
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+# Community Models
+class Post(Base):
+    __tablename__ = "posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    title = Column(String, index=True, nullable=False)
+    content = Column(Text, nullable=False)  # Markdown content
+    summary = Column(Text)  # Optional summary/preivew
+    tags = Column(String)  # Comma-separated tags
+    view_count = Column(Integer, default=0)
+    like_count = Column(Integer, default=0)
+    comment_count = Column(Integer, default=0)
+    favorite_count = Column(Integer, default=0)
+    is_pinned = Column(Boolean, default=False)
+    is_public = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class PostLike(Base):
+    __tablename__ = "post_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    post_id = Column(Integer, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Unique constraint on user_id + post_id
+    __table_args__ = (
+        {"sqlite_autoincrement": True},
+    )
+
+class PostFavorite(Base):
+    __tablename__ = "post_favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    post_id = Column(Integer, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Unique constraint on user_id + post_id
+    __table_args__ = (
+        {"sqlite_autoincrement": True},
+    )
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    post_id = Column(Integer, index=True, nullable=False)
+    parent_id = Column(Integer, index=True, nullable=True)  # For nested comments/replies
+    content = Column(Text, nullable=False)
+    like_count = Column(Integer, default=0)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class CommentLike(Base):
+    __tablename__ = "comment_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    comment_id = Column(Integer, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Unique constraint on user_id + comment_id
+    __table_args__ = (
+        {"sqlite_autoincrement": True},
+    )
+
+class PostCodeShare(Base):
+    __tablename__ = "post_code_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, index=True, nullable=False)
+    code_library_id = Column(Integer, index=True, nullable=False)
+    share_order = Column(Integer, default=0)  # Order of display
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Follow(Base):
+    __tablename__ = "follows"
+
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, index=True, nullable=False)  # User who follows
+    following_id = Column(Integer, index=True, nullable=False)  # User being followed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Unique constraint on follower_id + following_id
+    __table_args__ = (
+        {"sqlite_autoincrement": True},
+    )
 
 def get_db():
     db = SessionLocal()

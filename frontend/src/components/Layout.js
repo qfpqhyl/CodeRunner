@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Layout as AntLayout, Menu, Button, Typography, Space, Dropdown, Modal, Form, Input, message } from 'antd';
-import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined, BookOutlined, KeyOutlined, RobotOutlined, DesktopOutlined } from '@ant-design/icons';
+import { Layout as AntLayout, Menu, Button, Typography, Space, Dropdown, Modal, Form, Input, message, Avatar } from 'antd';
+import { HomeOutlined, UserOutlined, LogoutOutlined, CodeOutlined, LoginOutlined, UserAddOutlined, BookOutlined, KeyOutlined, RobotOutlined, DesktopOutlined, IdcardOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { changePassword } from '../services/api';
+import { changePassword, getAvatarUrl } from '../services/api';
 
 const { Header, Content, Footer } = AntLayout;
 const { Title } = Typography;
@@ -44,6 +44,11 @@ const Layout = ({ children }) => {
       key: '/',
       icon: <HomeOutlined />,
       label: 'Home',
+    },
+    {
+      key: '/community',
+      icon: <TeamOutlined />,
+      label: '社区',
     },
     {
       key: '/code-library',
@@ -132,12 +137,18 @@ const Layout = ({ children }) => {
                   },
                   {
                     key: '2',
+                    icon: <IdcardOutlined />,
+                    label: '个人主页',
+                    onClick: () => navigate(`/${user?.username}`),
+                  },
+                  {
+                    key: '3',
                     icon: <KeyOutlined />,
                     label: '修改密码',
                     onClick: () => setPasswordModalVisible(true),
                   },
                   {
-                    key: '3',
+                    key: '4',
                     icon: <LogoutOutlined />,
                     label: '退出登录',
                     onClick: handleLogout,
@@ -146,7 +157,13 @@ const Layout = ({ children }) => {
               }}
               trigger={['click']}
             >
-              <Button type="primary" icon={<UserOutlined />}>
+              <Button type="primary" icon={
+                user?.avatar_url ? (
+                  <Avatar size="small" src={getAvatarUrl(user.avatar_url.split('/').pop())} />
+                ) : (
+                  <UserOutlined />
+                )
+              }>
                 {user?.full_name || user?.username}
               </Button>
             </Dropdown>

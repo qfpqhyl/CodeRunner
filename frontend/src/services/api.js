@@ -109,6 +109,7 @@ export const getExecutions = () => api.get('/executions');
 
 // Code library endpoints
 export const saveCodeToLibrary = (codeData) => api.post('/code-library', codeData);
+export const saveCodeToLibraryFromShare = (saveData) => api.post('/code-library/save', saveData);
 export const getCodeLibrary = (params = {}) => api.get('/code-library', { params });
 export const getCodeFromLibrary = (codeId) => api.get(`/code-library/${codeId}`);
 export const updateCodeInLibrary = (codeId, codeData) => api.put(`/code-library/${codeId}`, codeData);
@@ -176,5 +177,53 @@ export const deleteUserEnvironment = (envId) => api.delete(`/user-environments/$
 // Admin user environment management endpoints
 export const adminGetAllUserEnvironments = () => api.get('/admin/user-environments');
 export const adminDeleteUserEnvironment = (envId) => api.delete(`/admin/user-environments/${envId}`);
+
+// User Profile endpoints
+export const getUserProfile = () => api.get('/profile');
+export const updateUserProfile = (profileData) => api.put('/profile', profileData);
+export const uploadAvatar = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/profile/upload-avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+export const deleteAvatar = () => api.delete('/profile/avatar');
+export const getAvatarUrl = (filename) => `${api.defaults.baseURL}/api/avatars/${filename}`;
+export const getUserEnhancedStats = () => api.get('/profile/enhanced-stats');
+
+// User Activity Logs endpoints
+export const getUserActivityLogs = (params = {}) => api.get('/profile/logs', { params });
+export const getUserLogActions = () => api.get('/profile/logs/actions');
+export const getUserLogResourceTypes = () => api.get('/profile/logs/resource-types');
+export const getUserProfileStats = () => api.get('/profile/stats');
+
+// Community API endpoints
+export const createPost = (postData) => api.post('/community/posts', postData);
+export const getPosts = (params = {}) => api.get('/community/posts', { params });
+export const getPost = (postId) => api.get(`/community/posts/${postId}`);
+export const deletePost = (postId) => api.delete(`/community/posts/${postId}`);
+export const likePost = (postId) => api.post(`/community/posts/${postId}/like`);
+export const favoritePost = (postId) => api.post(`/community/posts/${postId}/favorite`);
+export const createComment = (postId, commentData) => api.post(`/community/posts/${postId}/comments`, commentData);
+export const getComments = (postId, params = {}) => api.get(`/community/posts/${postId}/comments`, { params });
+export const likeComment = (commentId) => api.post(`/community/comments/${commentId}/like`);
+export const followUser = (userId) => api.post(`/community/follow/${userId}`);
+
+// Follow/Followers endpoints
+export const getUserFollowers = (userId, params = {}) => api.get(`/users/${userId}/followers`, { params });
+export const getUserFollowing = (userId, params = {}) => api.get(`/users/${userId}/following`, { params });
+export const getFollowStatus = (userId) => api.get(`/users/${userId}/follow-status`);
+export const getUserByUsername = (username) => api.get(`/users/by-username/${username}`);
+
+// User-specific content endpoints
+export const getUserPosts = (userId, params = {}) => api.get(`/users/${userId}/posts`, { params });
+export const getUserCodeLibrary = (userId, params = {}) => api.get(`/users/${userId}/code-library`, { params });
+export const getUserPublicStats = (userId) => api.get(`/users/${userId}/stats`);
+
+// Code Library Save/Copy endpoints
+export const getAvailableEnvironments = () => api.get('/environments/available');
 
 export default api;

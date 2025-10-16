@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -18,6 +18,13 @@ class UserResponse(UserBase):
     is_admin: bool
     user_level: int
     created_at: datetime
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    github_username: Optional[str] = None
+    company: Optional[str] = None
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -76,6 +83,8 @@ class CodeLibraryResponse(BaseModel):
     is_public: bool
     tags: Optional[str] = None
     conda_env: str
+    is_shared_via_post: bool
+    shared_post_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -239,3 +248,194 @@ class PackageInstallRequest(BaseModel):
 
 class PackageInstallResponse(BaseModel):
     message: str
+
+# User Profile Models
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    github_username: Optional[str] = None
+    company: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    website: Optional[str] = None
+    github_username: Optional[str] = None
+    company: Optional[str] = None
+    is_active: bool
+    is_admin: bool
+    user_level: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# System Log Models for User Profile
+class SystemLogResponse(BaseModel):
+    id: int
+    action: str
+    resource_type: str
+    resource_id: Optional[int] = None
+    details: Optional[Union[str, dict]] = None
+    ip_address: str
+    user_agent: Optional[str] = None
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserLogQuery(BaseModel):
+    action: Optional[str] = None
+    resource_type: Optional[str] = None
+    status: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    page: Optional[int] = 1
+    page_size: Optional[int] = 20
+
+# Community Models
+class PostCreate(BaseModel):
+    title: str
+    content: str
+    summary: Optional[str] = None
+    tags: Optional[str] = None
+    is_public: Optional[bool] = True
+    shared_code_ids: Optional[list[int]] = []  # List of code library IDs to share
+
+class PostUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    summary: Optional[str] = None
+    tags: Optional[str] = None
+    is_public: Optional[bool] = None
+
+class PostResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    content: str
+    summary: Optional[str] = None
+    tags: Optional[str] = None
+    view_count: int
+    like_count: int
+    comment_count: int
+    favorite_count: int
+    is_pinned: bool
+    is_public: bool
+    created_at: datetime
+    updated_at: datetime
+
+    # Additional fields for response
+    author_username: Optional[str] = None
+    author_avatar: Optional[str] = None
+    author_full_name: Optional[str] = None
+    is_liked_by_current_user: Optional[bool] = False
+    is_favorited_by_current_user: Optional[bool] = False
+    shared_codes: Optional[list[dict]] = []
+
+    class Config:
+        from_attributes = True
+
+class CommentCreate(BaseModel):
+    content: str
+    parent_id: Optional[int] = None
+
+class CommentUpdate(BaseModel):
+    content: Optional[str] = None
+
+class CommentResponse(BaseModel):
+    id: int
+    user_id: int
+    post_id: int
+    parent_id: Optional[int] = None
+    content: str
+    like_count: int
+    is_deleted: bool
+    created_at: datetime
+    updated_at: datetime
+
+    # Additional fields for response
+    author_username: Optional[str] = None
+    author_avatar: Optional[str] = None
+    author_full_name: Optional[str] = None
+    is_liked_by_current_user: Optional[bool] = False
+    replies: Optional[list["CommentResponse"]] = []
+
+    class Config:
+        from_attributes = True
+
+class PostQuery(BaseModel):
+    page: Optional[int] = 1
+    page_size: Optional[int] = 20
+    author_id: Optional[int] = None
+    tag: Optional[str] = None
+    search: Optional[str] = None
+    sort_by: Optional[str] = "latest"  # latest, popular, most_liked, most_commented
+    is_pinned: Optional[bool] = None
+
+class CommentQuery(BaseModel):
+    page: Optional[int] = 1
+    page_size: Optional[int] = 20
+    sort_by: Optional[str] = "latest"  # latest, most_liked
+
+class FollowCreate(BaseModel):
+    following_id: int
+
+class FollowResponse(BaseModel):
+    id: int
+    follower_id: int
+    following_id: int
+    created_at: datetime
+
+    # Additional fields
+    following_username: Optional[str] = None
+    following_avatar: Optional[str] = None
+    following_full_name: Optional[str] = None
+    is_following: Optional[bool] = True
+
+    class Config:
+        from_attributes = True
+
+# User Stats Models
+class UserStatsResponse(BaseModel):
+    # Basic stats
+    code_library_count: int
+    posts_count: int
+    followers_count: int
+    following_count: int
+    total_likes: int
+    total_favorites: int
+    total_views: int
+
+    # Recent activity
+    recent_posts: list[PostResponse] = []
+    recent_codes: list[CodeLibraryResponse] = []
+    favorite_posts: list[PostResponse] = []
+    liked_posts: list[PostResponse] = []
+
+    class Config:
+        from_attributes = True
+
+# Code Library Save/Copy Models
+class CodeLibrarySaveRequest(BaseModel):
+    source_code_id: int
+    title: Optional[str] = None
+    description: Optional[str] = None
+    conda_env: Optional[str] = "base"
+
+class CodeLibrarySaveResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+
+    class Config:
+        from_attributes = True
