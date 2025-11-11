@@ -54,7 +54,7 @@ def get_daily_execution_count(user_id: int, db) -> int:
     """Get today's execution count for a user"""
     from datetime import date
     today = date.today()
-    from database import CodeExecution
+    from .database import CodeExecution
 
     count = db.query(CodeExecution).filter(
         CodeExecution.user_id == user_id,
@@ -67,7 +67,7 @@ def get_daily_api_call_count(user_id: int, db) -> int:
     """Get today's API call count for a user"""
     from datetime import date
     today = date.today()
-    from database import CodeExecution
+    from .database import CodeExecution
 
     count = db.query(CodeExecution).filter(
         CodeExecution.user_id == user_id,

@@ -4,16 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_, desc
 
-from database import (
+from models.database import (
     get_db, User, Post, PostLike, PostFavorite, Comment, CommentLike, 
     PostCodeShare, Follow, CodeLibrary, CodeExecution
 )
-from models import (
+from models.models import (
     PostCreate, PostUpdate, PostResponse, CommentCreate, CommentUpdate, 
     CommentResponse, PostQuery, CommentQuery, FollowCreate, FollowResponse
 )
-from auth import get_current_user
-from utils import log_system_event, get_client_info
+from services.auth import get_current_user
+from utils.utils import log_system_event, get_client_info
 
 router = APIRouter(prefix="/community", tags=["community"])
 
@@ -692,7 +692,7 @@ def like_comment(
     return {"message": message, "is_liked": is_liked, "like_count": comment.like_count}
 
 
-@router.post("/follow/{user_id}", response_model=FollowResponse)
+@router.post("/follow/{user_id}")
 def follow_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -742,6 +742,7 @@ def follow_user(
     )
 
     response_dict = {
+        "message": message,
         "id": 0,  # Placeholder
         "follower_id": current_user.id,
         "following_id": user_id,
@@ -752,7 +753,7 @@ def follow_user(
         "is_following": is_following
     }
 
-    return FollowResponse(**response_dict)
+    return response_dict
 
 # Enhanced User Profile Stats
 

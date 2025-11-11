@@ -6,10 +6,10 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db, CodeLibrary, CodeExecution
-from models import CodeExecuteByAPIRequest, CodeExecuteByAPIResponse, CodeLibraryResponse
-from auth import get_api_key_user
-from user_levels import get_user_level_config, can_user_make_api_call
+from models.database import get_db, CodeLibrary, CodeExecution
+from models.models import CodeExecuteByAPIRequest, CodeExecuteByAPIResponse, CodeLibraryResponse
+from services.auth import get_api_key_user
+from models.user_levels import get_user_level_config, can_user_make_api_call
 
 router = APIRouter(prefix="/api/v1", tags=["external-api"])
 

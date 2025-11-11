@@ -111,6 +111,16 @@ const AppContent = () => {
           }
         />
         <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/:username"
           element={
             <ProtectedRoute>

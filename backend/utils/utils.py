@@ -2,7 +2,7 @@
 import json
 from fastapi import Request
 from sqlalchemy.orm import Session
-from database import SystemLog
+from models.database import SystemLog
 
 
 def log_system_event(

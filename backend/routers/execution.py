@@ -6,11 +6,11 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db, User, CodeExecution
-from models import CodeExecutionRequest, CodeExecutionResponse
-from auth import get_current_user, get_current_admin_user
-from user_levels import get_user_level_config, can_user_execute, get_daily_execution_count
-from utils import log_system_event, get_client_info
+from models.database import get_db, User, CodeExecution
+from models.models import CodeExecutionRequest, CodeExecutionResponse
+from services.auth import get_current_user, get_current_admin_user
+from models.user_levels import get_user_level_config, can_user_execute, get_daily_execution_count
+from utils.utils import log_system_event, get_client_info
 
 router = APIRouter(tags=["execution"])
 

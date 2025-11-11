@@ -154,7 +154,7 @@ const FollowListPage = () => {
             <Space>
               <Button
                 type="text"
-                onClick={() => navigate(`/profile/${username}`)}
+                onClick={() => navigate(`/${username}`)}
                 style={{ fontSize: '16px' }}
               >
                 ← 返回
@@ -205,7 +205,7 @@ const FollowListPage = () => {
                   <Space>
                     <Button
                       type="link"
-                      onClick={() => navigate(`/profile/${item.username}`)}
+                      onClick={() => navigate(`/${item.username}`)}
                       style={{ padding: 0, fontSize: '16px', fontWeight: '500' }}
                     >
                       {item.full_name || item.username}

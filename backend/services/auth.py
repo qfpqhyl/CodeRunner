@@ -6,8 +6,8 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from database import get_db, User, APIKey
-from models import TokenData
+from models.database import get_db, User, APIKey
+from models.models import TokenData
 
 SECRET_KEY = "your-secret-key-here-change-in-production"
 ALGORITHM = "HS256"

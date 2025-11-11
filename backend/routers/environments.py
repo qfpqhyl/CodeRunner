@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
-from database import get_db, User, UserEnvironment
-from models import (
+from models.database import get_db, User, UserEnvironment
+from models.models import (
     UserEnvironmentCreate, UserEnvironmentUpdate, UserEnvironmentResponse,
     EnvironmentInfo, PackageInfo, PackageInstallRequest, PackageInstallResponse
 )
-from auth import get_current_user, get_current_admin_user
-from utils import log_system_event, get_client_info
+from services.auth import get_current_user, get_current_admin_user
+from utils.utils import log_system_event, get_client_info
 
 router = APIRouter(tags=["environments"])
 
@@ -22,7 +22,7 @@ router = APIRouter(tags=["environments"])
 def get_conda_environments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get available conda environments based on user permissions"""
     try:
-        # Get user's accessible environments from database
+        # Get user's accessible environments from models.database
         accessible_envs = set()
 
         # Always include base environment
@@ -89,11 +89,11 @@ def get_conda_environments(current_user: User = Depends(get_current_user), db: S
 
             return final_envs
         else:
-            # Fallback: return base + user environments from database
+            # Fallback: return base + user environments from models.database
             return list(accessible_envs)
 
     except subprocess.TimeoutExpired:
-        # Return base + user environments from database on timeout
+        # Return base + user environments from models.database on timeout
         return ["base"]
     except Exception as e:
         # Log error but return basic environments
@@ -396,7 +396,7 @@ def delete_user_environment(
             error_msg = result.stderr.strip() if result.stderr else "环境删除失败"
             raise HTTPException(status_code=500, detail=f"Conda环境删除失败: {error_msg}")
 
-        # Remove from database
+        # Remove from models.database
         db.delete(env)
         db.commit()
 
@@ -481,7 +481,7 @@ def admin_delete_environment(
             error_msg = result.stderr.strip() if result.stderr else "环境删除失败"
             raise HTTPException(status_code=500, detail=f"Conda环境删除失败: {error_msg}")
 
-        # Remove from database
+        # Remove from models.database
         db.delete(env)
         db.commit()
 

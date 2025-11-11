@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import init_db
+from models.database import init_db
 from routers import auth, users, execution, code_library, api_keys, external_api, environments, ai, admin, profile, community, misc
 
 app = FastAPI(title="CodeRunner API", version="1.0.0")

@@ -10,10 +10,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 
-from database import get_db, User, SystemLog, CodeExecution, CodeLibrary, APIKey, AIConfig, UserEnvironment, Post, Comment, Follow
-from models import SystemLogResponse, UserLogQuery
-from auth import get_current_admin_user
-from utils import get_client_info, log_system_event
+from models.database import get_db, User, SystemLog, CodeExecution, CodeLibrary, APIKey, AIConfig, UserEnvironment, Post, Comment, Follow
+from models.models import SystemLogResponse, UserLogQuery
+from services.auth import get_current_admin_user
+from utils.utils import get_client_info, log_system_event
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -390,14 +390,14 @@ def import_database(
             shutil.copy2(db_backup_path, current_db_path)
 
             # Reinitialize database connection
-            from database import engine, SessionLocal
+            from models.database import engine, SessionLocal
             from sqlalchemy import create_engine
 
             # Dispose current engine
             engine.dispose()
 
             # Recreate engine
-            from database import SQLALCHEMY_DATABASE_URL
+            from models.database import SQLALCHEMY_DATABASE_URL
             new_engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 
             # Test new database connection

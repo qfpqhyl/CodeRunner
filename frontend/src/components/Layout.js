@@ -139,7 +139,7 @@ const Layout = ({ children }) => {
                     key: '2',
                     icon: <IdcardOutlined />,
                     label: '个人主页',
-                    onClick: () => navigate(`/${user?.username}`),
+                    onClick: () => navigate('/profile'),
                   },
                   {
                     key: '3',

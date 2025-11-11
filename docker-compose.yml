@@ -1,0 +1,57 @@
+name: coderunner-app
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coderunner-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - DATABASE_URL=sqlite:///./data/coderunner.db
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data
+      - ./backend/data:/app/backend/data
+    networks:
+      - coderunner-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coderunner-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - coderunner-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  coderunner-network:
+    driver: bridge
+
+volumes:
+  coderunner-data:
+    driver: local

@@ -3,10 +3,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db, User, CodeLibrary
-from models import CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, CodeLibrarySaveRequest, CodeLibrarySaveResponse
-from auth import get_current_user
-from user_levels import get_user_level_config
+from models.database import get_db, User, CodeLibrary
+from models.models import CodeLibraryCreate, CodeLibraryUpdate, CodeLibraryResponse, CodeLibrarySaveRequest, CodeLibrarySaveResponse
+from services.auth import get_current_user
+from models.user_levels import get_user_level_config
 
 router = APIRouter(prefix="/code-library", tags=["code-library"])
 

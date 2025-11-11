@@ -91,7 +91,7 @@ export const getCurrentBackendUrl = () => {
 export const register = (userData) => api.post('/register', userData);
 export const login = (credentials) => api.post('/login', credentials);
 export const getCurrentUser = () => api.get('/users/me');
-export const getUsers = () => api.get('/users');
+export const getUsers = () => api.get('/admin/users');
 
 // Admin endpoints
 export const createUser = (userData) => api.post('/admin/users', userData);
@@ -213,15 +213,15 @@ export const likeComment = (commentId) => api.post(`/community/comments/${commen
 export const followUser = (userId) => api.post(`/community/follow/${userId}`);
 
 // Follow/Followers endpoints
-export const getUserFollowers = (userId, params = {}) => api.get(`/users/${userId}/followers`, { params });
-export const getUserFollowing = (userId, params = {}) => api.get(`/users/${userId}/following`, { params });
-export const getFollowStatus = (userId) => api.get(`/users/${userId}/follow-status`);
-export const getUserByUsername = (username) => api.get(`/users/by-username/${username}`);
+export const getUserFollowers = (userId, params = {}) => api.get(`/community/users/${userId}/followers`, { params });
+export const getUserFollowing = (userId, params = {}) => api.get(`/community/users/${userId}/following`, { params });
+export const getFollowStatus = (userId) => api.get(`/community/users/${userId}/follow-status`);
+export const getUserByUsername = (username) => api.get(`/community/users/by-username/${username}`);
 
 // User-specific content endpoints
-export const getUserPosts = (userId, params = {}) => api.get(`/users/${userId}/posts`, { params });
-export const getUserCodeLibrary = (userId, params = {}) => api.get(`/users/${userId}/code-library`, { params });
-export const getUserPublicStats = (userId) => api.get(`/users/${userId}/stats`);
+export const getUserPosts = (userId, params = {}) => api.get(`/community/users/${userId}/posts`, { params });
+export const getUserCodeLibrary = (userId, params = {}) => api.get(`/community/users/${userId}/code-library`, { params });
+export const getUserPublicStats = (userId) => api.get(`/community/users/${userId}/stats`);
 
 // Code Library Save/Copy endpoints
 export const getAvailableEnvironments = () => api.get('/environments/available');

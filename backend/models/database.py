@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./coderunner.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/coderunner.db"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -229,7 +229,7 @@ def init_db():
         admin_user = db.query(User).filter(User.is_admin == True).first()
         if not admin_user:
             # Create default admin user
-            from auth import get_password_hash
+            from services.auth import get_password_hash
             admin_password = "admin123"  # Default password, should be changed
             admin_user = User(
                 username="admin",

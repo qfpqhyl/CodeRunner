@@ -2,10 +2,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import get_db, User, CodeExecution, CodeLibrary, APIKey
-from models import UserResponse
-from auth import get_current_user
-from user_levels import get_user_level_config, get_daily_execution_count, get_daily_api_call_count, USER_LEVELS
+from models.database import get_db, User, CodeExecution, CodeLibrary, APIKey
+from models.models import UserResponse
+from services.auth import get_current_user
+from models.user_levels import get_user_level_config, get_daily_execution_count, get_daily_api_call_count, USER_LEVELS
 
 router = APIRouter(tags=["misc"])
 

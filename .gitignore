@@ -53,7 +53,7 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-
+CLAUDE.md
 # Logs
 *.log
 

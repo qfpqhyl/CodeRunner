@@ -2,16 +2,17 @@
 import os
 import uuid
 import shutil
+import json
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from database import get_db, User, SystemLog, CodeExecution, Post, Comment, Follow
-from models import UserProfileUpdate, UserProfileResponse, SystemLogResponse, UserLogQuery, UserStatsResponse
-from auth import get_current_user
-from utils import get_client_info, log_system_event
+from models.database import get_db, User, SystemLog, CodeExecution, Post, Comment, Follow, CodeLibrary, PostLike, PostFavorite
+from models.models import UserProfileUpdate, UserProfileResponse, SystemLogResponse, UserLogQuery, UserStatsResponse, PostResponse, CodeLibraryResponse
+from services.auth import get_current_user
+from utils.utils import get_client_info, log_system_event
 
 router = APIRouter(tags=["profile"])
 
