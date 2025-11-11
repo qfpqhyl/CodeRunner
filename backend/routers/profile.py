@@ -11,8 +11,9 @@ from sqlalchemy import func
 from database import get_db, User, SystemLog, CodeExecution, Post, Comment, Follow
 from models import UserProfileUpdate, UserProfileResponse, SystemLogResponse, UserLogQuery, UserStatsResponse
 from auth import get_current_user
+from utils import get_client_info, log_system_event
 
-router = APIRouter(prefix="/profile", tags=["profile"])
+router = APIRouter(tags=["profile"])
 
 # Avatar storage directory
 AVATAR_DIR = "data/avatars"
@@ -284,7 +285,7 @@ def get_user_activity_logs(
     }
 
 
-@router.get("/profile/logs/actions")
+@router.get("/logs/actions")
 def get_user_log_actions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get available log actions for the current user"""
     actions = db.query(SystemLog.action).filter(
@@ -293,7 +294,7 @@ def get_user_log_actions(current_user: User = Depends(get_current_user), db: Ses
     return [action[0] for action in actions if action[0]]
 
 
-@router.get("/profile/logs/resource-types")
+@router.get("/logs/resource-types")
 def get_user_log_resource_types(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get available resource types for the current user"""
     resource_types = db.query(SystemLog.resource_type).filter(

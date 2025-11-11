@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db, User, AIConfig
 from models import AIConfigCreate, AIConfigUpdate, AIConfigResponse, AICodeGenerateRequest, AICodeGenerateResponse
 from auth import get_current_user
+from utils import get_client_info, log_system_event
 
 router = APIRouter(tags=["ai"])
 

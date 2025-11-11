@@ -18,7 +18,7 @@ from utils import log_system_event, get_client_info
 router = APIRouter(prefix="/community", tags=["community"])
 
 
-@router.post("/community/posts", response_model=PostResponse)
+@router.post("/posts", response_model=PostResponse)
 def create_post(
     post_data: PostCreate,
     current_user: User = Depends(get_current_user),
@@ -129,7 +129,7 @@ def create_post(
         raise HTTPException(status_code=500, detail=f"帖子创建失败: {str(e)}")
 
 
-@router.get("/community/posts", response_model=dict)
+@router.get("/posts", response_model=dict)
 def get_posts(
     query: PostQuery = Depends(),
     current_user: User = Depends(get_current_user),
@@ -261,7 +261,7 @@ def get_posts(
         raise HTTPException(status_code=500, detail=f"获取帖子列表失败: {str(e)}")
 
 
-@router.get("/community/posts/{post_id}", response_model=PostResponse)
+@router.get("/posts/{post_id}", response_model=PostResponse)
 def get_post(
     post_id: int,
     current_user: User = Depends(get_current_user),
@@ -337,7 +337,7 @@ def get_post(
     return PostResponse(**response_dict)
 
 
-@router.post("/community/posts/{post_id}/like")
+@router.post("/posts/{post_id}/like")
 def like_post(
     post_id: int,
     current_user: User = Depends(get_current_user),
@@ -391,7 +391,7 @@ def like_post(
     return {"message": message, "is_liked": is_liked, "like_count": post.like_count}
 
 
-@router.post("/community/posts/{post_id}/favorite")
+@router.post("/posts/{post_id}/favorite")
 def favorite_post(
     post_id: int,
     current_user: User = Depends(get_current_user),
@@ -445,7 +445,7 @@ def favorite_post(
     return {"message": message, "is_favorited": is_favorited, "favorite_count": post.favorite_count}
 
 
-@router.post("/community/posts/{post_id}/comments", response_model=CommentResponse)
+@router.post("/posts/{post_id}/comments", response_model=CommentResponse)
 def create_comment(
     post_id: int,
     comment_data: CommentCreate,
@@ -522,7 +522,7 @@ def create_comment(
     return CommentResponse(**response_dict)
 
 
-@router.get("/community/posts/{post_id}/comments", response_model=dict)
+@router.get("/posts/{post_id}/comments", response_model=dict)
 def get_comments(
     post_id: int,
     query: CommentQuery = Depends(),
@@ -637,7 +637,7 @@ def get_comments(
         raise HTTPException(status_code=500, detail=f"获取评论失败: {str(e)}")
 
 
-@router.post("/community/comments/{comment_id}/like")
+@router.post("/comments/{comment_id}/like")
 def like_comment(
     comment_id: int,
     current_user: User = Depends(get_current_user),
@@ -692,7 +692,7 @@ def like_comment(
     return {"message": message, "is_liked": is_liked, "like_count": comment.like_count}
 
 
-@router.post("/community/follow/{user_id}", response_model=FollowResponse)
+@router.post("/follow/{user_id}", response_model=FollowResponse)
 def follow_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -756,7 +756,7 @@ def follow_user(
 
 # Enhanced User Profile Stats
 
-@router.delete("/community/posts/{post_id}")
+@router.delete("/posts/{post_id}")
 def delete_post(
     post_id: int,
     current_user: User = Depends(get_current_user),
