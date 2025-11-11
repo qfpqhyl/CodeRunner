@@ -8,15 +8,29 @@ CodeRunner is a remote Python code execution platform built with FastAPI (backen
 
 ## Architecture
 
-### Backend (FastAPI) - Monolithic Architecture
-The core FastAPI application follows a monolithic architecture pattern with a single large `main.py` file (2700+ lines) containing all API endpoints, middleware, and business logic. This design centralizes functionality for easier maintenance in a medium-sized application.
+### Backend (FastAPI) - Modular Router Architecture
+The core FastAPI application follows a modular router-based architecture pattern with separate router files for each domain. This design provides better maintainability, testability, and scalability compared to the previous monolithic structure.
 
 **Core Files:**
-- **main.py**: Main FastAPI application with all API endpoints, authentication, and business logic (2700+ lines)
-- **database.py**: SQLAlchemy models (User, CodeExecution, CodeLibrary, APIKey, AIConfig, UserEnvironment, SystemLog) and database configuration
+- **main.py**: Main FastAPI application initialization and router registration (38 lines)
+- **utils.py**: Shared utility functions (log_system_event, get_client_info)
+- **database.py**: SQLAlchemy models (User, CodeExecution, CodeLibrary, APIKey, AIConfig, UserEnvironment, SystemLog, Post, Comment, Follow) and database configuration
 - **models.py**: Pydantic data models for request/response validation with comprehensive type hints
 - **auth.py**: JWT authentication (30-minute expiration), Argon2 password hashing, and user authentication functions
 - **user_levels.py**: User tier configuration (Free, Basic, Premium, Enterprise) with execution limits and quotas
+- **routers/**: Modular router files organized by feature domain
+  - **auth.py**: Authentication endpoints (register, login, password change) - 4 endpoints
+  - **users.py**: Admin user management - 5 endpoints
+  - **execution.py**: Code execution - 3 endpoints
+  - **code_library.py**: Code library management - 6 endpoints
+  - **api_keys.py**: API key management - 4 endpoints
+  - **external_api.py**: External API with API key authentication - 3 endpoints
+  - **environments.py**: Conda environment and package management - 14 endpoints
+  - **ai.py**: AI configuration and code generation - 5 endpoints
+  - **admin.py**: System logs and database management - 7 endpoints
+  - **profile.py**: User profile and avatar management - 10 endpoints
+  - **community.py**: Posts, comments, likes, follows - 17 endpoints
+  - **misc.py**: Root, user levels, user stats - 3 endpoints
 
 **Key Backend Features:**
 - Secure code execution in temporary files with conda environment support
@@ -25,12 +39,14 @@ The core FastAPI application follows a monolithic architecture pattern with a si
 - User environment management with conda virtual environments
 - Database import/export functionality for administrators
 - Package management (install/uninstall/upgrade) in isolated environments
+- Community features with posts, comments, likes, and user following
 
 **Backend Architecture Patterns:**
+- **Modular Routers**: Each feature domain in separate router files for better organization (81 total endpoints)
 - **Dependency Injection**: FastAPI's dependency system for database sessions and authentication
 - **Repository Pattern**: SQLAlchemy ORM with proper session management
 - **Middleware Layer**: CORS, authentication, client IP tracking, and request logging
-- **Service Layer**: Business logic embedded directly in endpoint functions
+- **Shared Utilities**: Common functions extracted to utils.py for reuse across routers
 - **Security Layer**: JWT tokens, Argon2 hashing, role-based access control
 
 ### Frontend (React + Ant Design)
@@ -70,12 +86,27 @@ Modern React application with Chinese localization and comprehensive UI componen
 ```
 CodeRunner/
 ├── backend/                    # FastAPI backend service
-│   ├── main.py                # Core API application (2700+ lines)
+│   ├── main.py                # Application initialization (38 lines)
+│   ├── utils.py               # Shared utilities (log_system_event, get_client_info)
 │   ├── database.py            # SQLAlchemy models + DB setup
 │   ├── models.py              # Pydantic request/response models
 │   ├── auth.py                # JWT authentication functions
 │   ├── user_levels.py         # User tier system configuration
-│   └── requirements.txt       # Python dependencies
+│   ├── routers/               # Modular router files (12 routers, 81 endpoints)
+│   │   ├── auth.py           # Authentication (4 endpoints)
+│   │   ├── users.py          # User management (5 endpoints)
+│   │   ├── execution.py      # Code execution (3 endpoints)
+│   │   ├── code_library.py   # Code library (6 endpoints)
+│   │   ├── api_keys.py       # API keys (4 endpoints)
+│   │   ├── external_api.py   # External API (3 endpoints)
+│   │   ├── environments.py   # Environments (14 endpoints)
+│   │   ├── ai.py             # AI features (5 endpoints)
+│   │   ├── admin.py          # Admin (7 endpoints)
+│   │   ├── profile.py        # Profile (10 endpoints)
+│   │   ├── community.py      # Community (17 endpoints)
+│   │   └── misc.py           # Misc (3 endpoints)
+│   ├── requirements.txt       # Python dependencies
+│   └── REFACTORING_SUMMARY.md # Backend refactoring documentation
 ├── frontend/                   # React frontend application
 │   ├── public/               # Static assets and favicon
 │   ├── src/
@@ -115,7 +146,11 @@ Comprehensive database design with 12 core tables supporting multi-tenant code e
 ### Key Development Patterns
 
 **Backend Patterns:**
-- **Single File Architecture**: All API endpoints in `main.py` - use Ctrl+F to find specific endpoints
+- **Modular Router Architecture**: API endpoints organized in separate router files by feature domain
+  - Find endpoints by checking the appropriate router file (auth.py, users.py, execution.py, etc.)
+  - Each router focuses on a specific feature area for better maintainability
+  - See `backend/REFACTORING_SUMMARY.md` for complete router breakdown
+- **Shared Utilities**: Common functions (logging, client info) in `utils.py` for reuse
 - **FastAPI Dependencies**: Authentication and database sessions handled via dependency injection
 - **SQLAlchemy Models**: All database models in `database.py` with proper relationships
 - **Pydantic Validation**: Request/response models in `models.py` with comprehensive type hints
@@ -467,13 +502,20 @@ The database auto-initializes on first run with:
 ## Development Notes & Best Practices
 
 ### Code Navigation Tips
-- **Backend**: All API endpoints are in `main.py` - use Ctrl+F to find specific endpoints
+- **Backend Routers**: API endpoints organized by feature in `routers/` directory
+  - Authentication: `routers/auth.py`
+  - User management: `routers/users.py`
+  - Code execution: `routers/execution.py`
+  - And 9 more routers - see `backend/REFACTORING_SUMMARY.md` for complete list
 - **Database Models**: All SQLAlchemy models are defined in `database.py`
 - **Frontend Components**: Page components are in `/pages`, shared components in `/components`
 - **API Layer**: HTTP requests are centralized in `frontend/src/services/api.js`
 
 ### Common Development Tasks
-- **Adding New API Endpoints**: Add to `main.py`, create corresponding Pydantic models in `models.py`
+- **Adding New API Endpoints**: 
+  - Add to appropriate router file in `routers/`
+  - Create corresponding Pydantic models in `models.py`
+  - Register router in `main.py` if new router
 - **Frontend Route Changes**: Update `App.js` routing and create page component in `/pages`
 - **Database Schema Changes**: Modify models in `database.py` (manual migrations currently)
 - **New UI Components**: Add to appropriate `/components` or `/pages` directory using Ant Design
@@ -484,9 +526,10 @@ The database auto-initializes on first run with:
 - **Integration**: Test critical user flows like code execution, AI generation, and authentication
 
 ### Production Considerations
+- **Architecture**: Modular router-based architecture suitable for scalable applications
 - **Missing Features**: No automated backend tests, no CI/CD pipeline, no database migrations
 - **Security**: Default admin password should be changed immediately in production
-- **Scaling**: Current monolithic architecture suitable for medium-sized applications
+- **Scaling**: Easy to scale individual routers or split into microservices if needed
 
 ### Community Features Development Notes
 - **Content Rendering**: Posts support markdown content with code snippet embedding
