@@ -47,3 +47,6 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# Old backup files
+main_old.py
