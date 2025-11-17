@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
 
-CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构建的远程Python代码执行平台。它提供了用户认证、多层级用户权限、AI代码生成、安全的Python代码执行、代码库管理、API密钥管理和全面的系统日志记录功能。
+CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构建的远程Python代码执行平台。它提供了用户认证、多层级用户权限、AI代码生成、安全的Python代码执行、代码库管理、API密钥管理、环境管理、社区互动功能以及全面的系统日志记录。
 
 ## 🖼️ 应用预览
 
@@ -26,6 +26,7 @@ CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构
 - 📚 个人代码库管理，支持标签和分类
 - 🔧 环境管理，支持多conda环境隔离
 - 📈 系统管理面板，全面的用户和日志管理
+- 🧑‍🤝‍🧑 社区互动：帖子、评论、点赞、收藏、关注
 
 ## ✨ 主要特性
 
@@ -92,34 +93,44 @@ CodeRunner是一个基于FastAPI（后端）和React + Ant Design（前端）构
 
 ```
 CodeRunner/
-├── backend/                    # FastAPI后端服务
-│   ├── main.py                # 主应用入口
-│   ├── database.py            # 数据库模型和配置
-│   ├── models.py              # Pydantic数据模型
-│   ├── auth.py                # 用户认证逻辑
-│   ├── user_levels.py         # 用户等级配置
-│   └── requirements.txt       # Python依赖包
-├── frontend/                   # React前端应用
-│   ├── public/                # 静态资源
+├── backend/                      # FastAPI 后端服务
+│   ├── main.py                   # 应用入口（聚合路由）
+│   ├── models/                   # 数据层与Pydantic模型
+│   │   ├── database.py           # SQLAlchemy ORM 模型与DB初始化
+│   │   ├── models.py             # Pydantic 数据模型
+│   │   └── user_levels.py        # 用户等级配置
+│   ├── routers/                  # 模块化路由
+│   │   ├── auth.py               # 认证
+│   │   ├── users.py              # 管理员用户管理
+│   │   ├── execution.py          # 代码执行
+│   │   ├── code_library.py       # 代码库
+│   │   ├── api_keys.py           # API 密钥
+│   │   ├── external_api.py       # 对外 API（API Key）
+│   │   ├── environments.py       # 环境/包管理
+│   │   ├── ai.py                 # AI 配置与代码生成
+│   │   ├── admin.py              # 管理与数据库备份
+│   │   ├── profile.py            # 用户资料与统计
+│   │   ├── community.py          # 帖子/评论/关注等社区功能
+│   │   └── misc.py               # 根与杂项端点
+│   ├── services/
+│   │   └── auth.py               # 认证服务（JWT、密码哈希等）
+│   ├── utils/
+│   │   └── utils.py              # 系统日志与请求信息
+│   ├── Dockerfile
+│   └── requirements.txt          # Python 依赖
+├── frontend/                     # React 前端应用
+│   ├── public/                   # 静态资源
 │   ├── src/
-│   │   ├── components/        # 可复用组件
-│   │   │   ├── AuthContext.js # 认证上下文
-│   │   │   └── Layout.js      # 布局组件
-│   │   ├── pages/            # 页面组件
-│   │   │   ├── HomePage.js   # 主页面
-│   │   │   ├── LoginPage.js  # 登录页面
-│   │   │   ├── ProductHomePage.js # 产品展示页
-│   │   │   ├── UserManagement.js  # 用户管理
-│   │   │   ├── SystemManagement.js # 系统管理
-│   │   │   ├── CodeLibraryPage.js  # 代码库
-│   │   │   ├── APIKeyPage.js       # API密钥管理
-│   │   │   └── AIConfigPage.js     # AI配置管理
-│   │   ├── services/         # API服务层
-│   │   │   └── api.js        # HTTP请求封装
-│   │   └── App.js            # 应用主组件
-│   └── package.json          # Node.js依赖
-├── README.md                  # 项目文档
-└── .gitignore                 # Git忽略文件
+│   │   ├── components/           # 可复用组件（含部署教程与后端配置面板）
+│   │   ├── pages/                # 主要页面（代码库、环境、社区、配置等）
+│   │   ├── services/api.js       # Axios 封装与后端地址管理
+│   │   └── App.js                # 应用主组件
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json              # Node.js 依赖与脚本
+├── docker-compose.yml            # 本地一键编排（前后端）
+├── README.md                     # 项目文档
+└── .gitignore                    # Git 忽略文件
 ```
 
 ## 🚀 快速部署
@@ -128,30 +139,22 @@ CodeRunner/
 - **演示地址**: [https://code.qfpqhyl.cloudns.org/](https://code.qfpqhyl.cloudns.org/)
 - **体验账号**: admin / admin123 (请在登录后修改密码)
 
-### 📋 两步完成部署
+### 📋 快速部署选项
 
-#### 步骤1：Docker 部署
-
-使用阿里云镜像快速部署 CodeRunner 后端服务：
+#### 选项A：Docker Compose 本地一键启动（推荐）
 
 ```bash
-# 拉取后端镜像
-docker pull crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
-
-# 启动后端服务
-docker run -d \
-  --name coderunner_backend \
-  -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -e DATABASE_URL=sqlite:///./data/coderunner.db \
-  -e SECRET_KEY=your-secret-key-change-this \
-  --restart unless-stopped \
-  crpi-6j8qwz5vgwdd7tds.cn-beijing.personal.cr.aliyuncs.com/coderunner/coderunner:backend
+git clone <your-repo-url>
+cd CodeRunner
+docker compose up -d --build
 ```
 
-> **注意**：请务必修改 `SECRET_KEY` 为安全的随机字符串，并确保数据目录权限正确。
+- 后端 API: `http://localhost:8000`
+- 前端应用: `http://localhost:3000`
 
-#### 步骤2：HTTPS 隧道配置（公网访问）
+> 提示：当前后端代码默认不从环境变量读取数据库与密钥配置，见下文“环境变量与后端配置”。
+
+#### 选项B：HTTPS 隧道配置（公网访问）
 
 使用 Cloudflare Tunnel 为后端服务创建公网 HTTPS 访问地址：
 
@@ -178,20 +181,19 @@ grep -oP 'https://[^\s]+\.trycloudflare\.com' tunnel.log || tail -20 tunnel.log
 
 ### 📝 前端配置
 
-1. **克隆项目**：
+- 默认后端地址为 `http://localhost:8000`，可在登录页右侧“后端服务配置”面板中设置并测试，也可通过 `localStorage` 的 `backendUrl` 动态切换。
+- 如需修改默认值，可编辑 `frontend/src/services/api.js` 中的 `getBackendUrl()` 返回值。
+- 开发模式：
 ```bash
-git clone <your-repo-url>
-cd CodeRunner/frontend
+cd frontend
+npm install
+npm start  # http://localhost:3000
 ```
-
-2. **修改后端地址**：
-编辑 `src/services/api.js`，将 `baseURL` 设置为您的公网隧道地址
-
-3. **构建并部署**：
+- 生产构建：
 ```bash
+cd frontend
 npm install
 npm run build
-# 将 build 目录部署到 Web 服务器
 ```
 
 ### 📊 基础运维
@@ -254,12 +256,18 @@ npm start  # 启动前端服务 http://localhost:3000
 
 ## 📊 数据库模式
 
-- **User**: 用户信息表
-- **CodeExecution**: 代码执行记录表
-- **CodeLibrary**: 代码库表
-- **APIKey**: API密钥表
-- **AIConfig**: AI配置表
-- **SystemLog**: 系统日志表
+- **User**: 用户信息与资料字段（头像、简介、位置、网站、GitHub、公司等）
+- **CodeExecution**: 代码执行记录（时长、内存、是否API调用、关联代码库）
+- **CodeLibrary**: 代码库（标题、描述、语言、公开状态、标签、环境等）
+- **APIKey**: API密钥（启用状态、使用次数、最近使用、过期时间）
+- **AIConfig**: AI配置（提供商、模型、密钥、Base URL、启用状态）
+- **UserEnvironment**: 用户自定义环境（名称、Python版本、说明、公开/启用、最后使用等）
+- **SystemLog**: 系统日志（动作、资源类型/ID、详情、IP、UA、状态）
+- **Post**: 帖子（内容、标签、统计、置顶、公开等）
+- **PostLike/PostFavorite**: 帖子点赞/收藏
+- **Comment/CommentLike**: 评论与点赞
+- **PostCodeShare**: 帖子内共享代码的关联关系
+- **Follow**: 关注关系（粉丝/关注）
 
 ## 🛠️ 管理命令
 
@@ -320,11 +328,31 @@ npm run build  # 构建生产版本
 - `GET /api/v1/codes` - 通过API密钥获取代码库
 - `GET /api/v1/codes/{id}` - 通过API密钥获取特定代码
 
+### 环境管理
+- `GET /environments/available` - 获取可用环境列表
+- `GET /environments/{env_name}/info` - 获取环境信息
+- `GET /environments/{env_name}/packages` - 获取已安装包
+- `POST /environments/{env_name}/packages/install` - 安装包
+- `DELETE /environments/{env_name}/packages/{package_name}` - 卸载包
+- `PUT /environments/{env_name}/packages/{package_name}/upgrade` - 升级包
+
+### 用户资料与统计
+- `GET /profile` / `PUT /profile` - 获取/更新资料
+- `POST /profile/avatar` - 上传头像
+- `GET /profile/enhanced-stats` - 获取增强统计
+
+### 社区功能
+- `POST /community/posts` / `GET /community/posts` - 创建/获取帖子（支持分页/筛选）
+- `GET /community/posts/{post_id}` - 获取帖子详情
+- `POST /community/posts/{post_id}/like` / `DELETE /community/posts/{post_id}/like` - 点赞/取消点赞
+- `POST /community/posts/{post_id}/favorite` / `DELETE /community/posts/{post_id}/favorite` - 收藏/取消收藏
+- `POST /community/comments` / `PUT /community/comments/{id}` / `DELETE /community/comments/{id}` - 评论增删改
+- `POST /community/follow` / `DELETE /community/follow` - 关注/取消关注
+- `GET /community/users/{user_id}/followers` / `GET /community/users/{user_id}/stats` / `GET /community/users/{user_id}/code-library` - 粉丝/公开统计/公开代码库
+
 ### 系统管理（仅管理员）
-- `GET /admin/logs` - 获取系统日志（可过滤）
-- `GET /admin/logs/stats` - 获取日志统计
-- `GET /admin/logs/actions` - 获取可用日志操作
-- `GET /admin/logs/resource-types` - 获取可用资源类型
+- `GET /admin/logs` / `GET /admin/logs/stats` / `GET /admin/logs/actions` / `GET /admin/logs/resource-types`
+- `POST /admin/database/export` / `POST /admin/database/import` / `GET /admin/database/info` - 数据库备份/导入与信息
 
 ## 🔒 安全说明
 
@@ -338,17 +366,19 @@ npm run build  # 构建生产版本
 ## 🌍 环境变量
 
 - `SECRET_KEY`: JWT签名密钥（生产环境中请更改）
-- `DATABASE_URL`: SQLite数据库连接字符串（默认: sqlite:///./coderunner.db）
+- `DATABASE_URL`: SQLite数据库连接字符串（默认: sqlite:///./data/coderunner.db）
 - `NODE_ENV`: React环境（development/production）
+
+> 说明：当前后端源码默认不从环境变量读取上述配置。请直接在 `backend/services/auth.py:12` 设置 `SECRET_KEY`，在 `backend/models/database.py:6` 设置 `SQLALCHEMY_DATABASE_URL`。容器环境中的变量仅用于后续扩展或外部镜像，基于本仓库构建的镜像以源码配置为准。
 
 ## 🐳 Docker配置
 
-项目使用多阶段Docker构建：
-- **后端**: Python 3.11 slim镜像，非root用户
-- **前端**: Node.js 18 Alpine构建器 + Nginx Alpine生产环境
-- **网络**: 用于容器通信的自定义Docker网络
-- **健康检查**: 两个容器都配置了健康检查
-- **数据持久化**: 后端数据挂载到`./data/`目录
+项目使用分阶段 Docker 构建与非 root 运行：
+- 后端：`continuumio/miniconda3` 基础镜像，Conda 环境 `runner`（Python 3.11），以非 root 用户运行，`uvicorn main:app` 暴露 `8000`
+- 前端：`node:18-alpine` 构建产物，`nginx:alpine` 作为生产静态服务，暴露 `80`
+- 网络：`docker-compose.yml` 定义 `coderunner-network` 用于容器通信
+- 健康检查：前后端容器均配置了健康检查
+- 数据持久化：后端数据挂载到 `./data/` 目录
 
 ## 📝 数据库初始化
 
@@ -376,9 +406,8 @@ npm run build  # 构建生产版本
 
 如果您遇到任何问题或有任何建议，请：
 
-1. 查看 [常见问题](docs/FAQ.md)
-2. 搜索现有的 [问题](https://github.com/your-username/CodeRunner/issues)
-3. 创建新的问题并提供详细信息
+1. 搜索现有的 [问题](https://github.com/your-username/CodeRunner/issues)
+2. 创建新的问题并提供详细信息
 
 ---
 
